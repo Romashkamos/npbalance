@@ -1,0 +1,11 @@
+{
+  "name": "telegram-bot-admin",
+  "version": "1.0.0",
+  "description": "Панель управления Telegram ботом",
+  "scripts": {
+    "start": "serve ."
+  },
+  "devDependencies": {
+    "serve": "^14.0.0"
+  }
+}
