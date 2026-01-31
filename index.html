@@ -18,6 +18,32 @@
         body {
             background: #f5f7fa;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .login-container {
+            background: linear-gradient(135deg, var(--secondary) 0%, #1a2530 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            overflow: hidden;
+        }
+        
+        .login-header {
+            background: linear-gradient(135deg, var(--primary) 0%, #2980b9 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
         }
         
         .sidebar {
@@ -26,11 +52,14 @@
             min-height: 100vh;
             position: fixed;
             width: 250px;
+            transition: all 0.3s;
+            z-index: 1000;
         }
         
         .content {
             margin-left: 250px;
             padding: 20px;
+            transition: all 0.3s;
         }
         
         .stat-card {
@@ -38,6 +67,7 @@
             transition: all 0.3s;
             border: none;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
         
         .stat-card:hover {
@@ -51,6 +81,8 @@
             margin: 5px 10px;
             border-radius: 10px;
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
         }
         
         .nav-link:hover, .nav-link.active {
@@ -58,118 +90,233 @@
             color: white;
         }
         
+        .nav-link i {
+            width: 20px;
+            text-align: center;
+            margin-right: 10px;
+        }
+        
         @media (max-width: 768px) {
             .sidebar {
-                position: static;
-                width: 100%;
-                min-height: auto;
+                margin-left: -250px;
+            }
+            .sidebar.active {
+                margin-left: 0;
             }
             .content {
                 margin-left: 0;
             }
+            .content.active {
+                margin-left: 250px;
+            }
+        }
+        
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: var(--primary);
+            border: none;
+            color: white;
+            border-radius: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+        }
+        
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: block;
+            }
+        }
+        
+        .bot-status {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <!-- Навигация -->
-    <div class="sidebar">
-        <div class="p-4">
-            <div class="text-center mb-4">
+    <!-- Контейнер для логина -->
+    <div id="loginContainer" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
                 <div class="mb-3">
-                    <i class="fas fa-robot fa-3x text-primary"></i>
+                    <i class="fas fa-robot fa-3x"></i>
                 </div>
-                <h4>Управление ботом</h4>
-                <small class="text-muted">Панель администратора</small>
+                <h3>Панель управления</h3>
+                <p class="mb-0">Telegram бот с балансами</p>
             </div>
             
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link active" href="#dashboard" data-page="dashboard">
-                        <i class="fas fa-tachometer-alt me-2"></i> Дашборд
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#users" data-page="users">
-                        <i class="fas fa-users me-2"></i> Пользователи
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#codes" data-page="codes">
-                        <i class="fas fa-gift me-2"></i> Промокоды
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#transactions" data-page="transactions">
-                        <i class="fas fa-exchange-alt me-2"></i> Транзакции
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#settings" data-page="settings">
-                        <i class="fas fa-cog me-2"></i> Настройки
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#api" data-page="api">
-                        <i class="fas fa-code me-2"></i> API
-                    </a>
-                </li>
-            </ul>
-            
-            <div class="mt-5 p-3 bg-dark rounded">
-                <small class="text-muted">Статус системы:</small>
-                <div class="d-flex align-items-center mt-2">
-                    <div class="bg-success rounded-circle" style="width: 10px; height: 10px;"></div>
-                    <span class="ms-2 small">Работает нормально</span>
+            <div class="card-body p-4">
+                <div id="loginError" class="alert alert-danger d-none">
+                    Неверный логин или пароль
+                </div>
+                
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="fas fa-user me-2"></i>Логин
+                        </label>
+                        <input type="text" class="form-control form-control-lg" 
+                               id="username" name="username" required 
+                               placeholder="Введите логин" autocomplete="username">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label">
+                            <i class="fas fa-lock me-2"></i>Пароль
+                        </label>
+                        <input type="password" class="form-control form-control-lg" 
+                               id="password" name="password" required 
+                               placeholder="Введите пароль" autocomplete="current-password">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="fas fa-sign-in-alt me-2"></i> Войти в систему
+                    </button>
+                </form>
+                
+                <div class="text-center mt-4">
+                    <p class="text-muted small mb-2">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Панель управления ботом
+                    </p>
+                    <p class="text-muted small">
+                        Текущая версия: 2.0
+                    </p>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Основной контент -->
-    <div class="content">
-        <!-- Заголовок -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 id="page-title">Дашборд</h2>
-            <div>
-                <button class="btn btn-outline-primary btn-sm me-2" id="refresh-btn">
-                    <i class="fas fa-sync-alt"></i> Обновить
-                </button>
-                <span class="text-muted" id="current-time"></span>
+    <!-- Основной интерфейс (скрыт до входа) -->
+    <div id="mainApp" style="display: none;">
+        <!-- Кнопка меню для мобильных -->
+        <button class="menu-toggle" id="menuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        <!-- Навигация -->
+        <div class="sidebar" id="sidebar">
+            <div class="p-4">
+                <div class="text-center mb-4">
+                    <div class="mb-3">
+                        <i class="fas fa-robot fa-3x text-primary"></i>
+                    </div>
+                    <h4>Управление ботом</h4>
+                    <small class="text-muted">Панель администратора</small>
+                </div>
+                
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#dashboard" data-page="dashboard">
+                            <i class="fas fa-tachometer-alt"></i> <span>Дашборд</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#users" data-page="users">
+                            <i class="fas fa-users"></i> <span>Пользователи</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#codes" data-page="codes">
+                            <i class="fas fa-gift"></i> <span>Промокоды</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#transactions" data-page="transactions">
+                            <i class="fas fa-exchange-alt"></i> <span>Транзакции</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#settings" data-page="settings">
+                            <i class="fas fa-cog"></i> <span>Настройки</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#api" data-page="api">
+                            <i class="fas fa-code"></i> <span>API</span>
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="bot-status mt-5">
+                    <small class="text-muted">Статус системы:</small>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="bg-success rounded-circle" style="width: 10px; height: 10px;"></div>
+                        <span class="ms-2 small" id="systemStatus">Работает нормально</span>
+                    </div>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="bg-primary rounded-circle" style="width: 10px; height: 10px;"></div>
+                        <span class="ms-2 small" id="botStatus">Бот: проверка...</span>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button class="btn btn-sm btn-outline-light w-100" onclick="logout()">
+                        <i class="fas fa-sign-out-alt me-1"></i> Выйти
+                    </button>
+                </div>
             </div>
         </div>
         
-        <!-- Контент страниц -->
-        <div id="page-content">
-            <!-- Загрузка контента через JavaScript -->
-            <div class="text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Загрузка...</span>
+        <!-- Основной контент -->
+        <div class="content" id="content">
+            <!-- Заголовок -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 id="page-title">Дашборд</h2>
+                    <p class="text-muted mb-0 small" id="page-description">Обзор системы и статистика</p>
                 </div>
-                <p class="mt-3">Загрузка данных...</p>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm me-2" id="refresh-btn">
+                        <i class="fas fa-sync-alt"></i> Обновить
+                    </button>
+                    <span class="text-muted" id="current-time"></span>
+                </div>
             </div>
+            
+            <!-- Контент страниц -->
+            <div id="page-content">
+                <!-- Загрузка контента через JavaScript -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <p class="mt-3">Загрузка данных...</p>
+                </div>
+            </div>
+            
+            <!-- Футер -->
+            <footer class="mt-5 pt-4 border-top">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Telegram Bot Admin Panel</h6>
+                        <p class="text-muted small">
+                            Панель управления для Telegram бота с системой балансов<br>
+                            Версия 2.0 | <span id="adminName">Администратор</span>
+                        </p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <p class="small text-muted">
+                            &copy; 2024 Все права защищены<br>
+                            <span id="sessionTime">Сессия начата: --:--</span>
+                        </p>
+                    </div>
+                </div>
+            </footer>
         </div>
-        
-        <!-- Футер -->
-        <footer class="mt-5 pt-4 border-top">
-            <div class="row">
-                <div class="col-md-6">
-                    <h6>Telegram Bot Admin Panel</h6>
-                    <p class="text-muted small">
-                        Панель управления для Telegram бота с системой балансов
-                    </p>
-                </div>
-                <div class="col-md-6 text-end">
-                    <p class="small text-muted">
-                        Версия 1.0<br>
-                        &copy; 2024 Все права защищены
-                    </p>
-                </div>
-            </div>
-        </footer>
     </div>
     
     <!-- Модальные окна -->
     <div class="modal fade" id="modalContainer"></div>
+    
+    <!-- Уведомления -->
+    <div id="notificationContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
     
     <!-- Скрипты -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -179,6 +326,604 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <!-- Основной JavaScript -->
-    <script src="js/app.js"></script>
-</body>
-</html>
+    <script>
+        // Конфигурация приложения
+        const APP_CONFIG = {
+            VERSION: '2.0',
+            BOT_TOKEN: '8402586959:AAGRTEGtSy7KoUlJDZvaNSxL3JKuZPWUMrY',
+            API_URL: 'https://api.telegram.org/bot',
+            SESSION_TIMEOUT: 60 // минуты
+        };
+        
+        // Состояние приложения
+        let AppState = {
+            isAuthenticated: false,
+            currentPage: 'dashboard',
+            sessionStart: null,
+            botInfo: null,
+            user: null,
+            stats: {
+                totalUsers: 0,
+                activeToday: 0,
+                totalBalance: 0,
+                pendingWithdrawals: 0
+            }
+        };
+        
+        // Инициализация приложения
+        $(document).ready(function() {
+            // Проверяем, авторизован ли пользователь
+            checkAuth();
+            
+            // Обновляем время
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            // Настройка обработчиков
+            setupEventHandlers();
+        });
+        
+        // Проверка авторизации
+        function checkAuth() {
+            const token = localStorage.getItem('admin_token');
+            const userData = localStorage.getItem('admin_user');
+            
+            if (token && userData) {
+                AppState.user = JSON.parse(userData);
+                AppState.sessionStart = new Date();
+                AppState.isAuthenticated = true;
+                
+                showMainApp();
+                initApp();
+            } else {
+                showLogin();
+            }
+        }
+        
+        // Показать экран логина
+        function showLogin() {
+            $('#loginContainer').show();
+            $('#mainApp').hide();
+        }
+        
+        // Показать основное приложение
+        function showMainApp() {
+            $('#loginContainer').hide();
+            $('#mainApp').show();
+            $('#adminName').text(AppState.user?.name || 'Администратор');
+            updateSessionTime();
+        }
+        
+        // Настройка обработчиков событий
+        function setupEventHandlers() {
+            // Форма логина
+            $('#loginForm').submit(function(e) {
+                e.preventDefault();
+                performLogin();
+            });
+            
+            // Кнопка меню для мобильных
+            $('#menuToggle').click(function() {
+                $('#sidebar').toggleClass('active');
+                $('#content').toggleClass('active');
+            });
+            
+            // Навигация
+            $(document).on('click', '.nav-link[data-page]', function(e) {
+                e.preventDefault();
+                const page = $(this).data('page');
+                loadPage(page);
+                
+                // На мобильных закрываем меню
+                if ($(window).width() < 768) {
+                    $('#sidebar').removeClass('active');
+                    $('#content').removeClass('active');
+                }
+            });
+            
+            // Кнопка обновления
+            $('#refresh-btn').click(function() {
+                loadPage(AppState.currentPage, true);
+            });
+        }
+        
+        // Выполнить вход
+        function performLogin() {
+            const username = $('#username').val();
+            const password = $('#password').val();
+            
+            // Очищаем предыдущие ошибки
+            $('#loginError').addClass('d-none');
+            
+            // Проверяем логин и пароль
+            if (username === 'admin' && password === '123') {
+                // Сохраняем данные пользователя
+                const userData = {
+                    username: username,
+                    name: 'Администратор',
+                    role: 'admin',
+                    loginTime: new Date().toISOString()
+                };
+                
+                // Сохраняем в localStorage
+                localStorage.setItem('admin_token', 'auth_' + Date.now());
+                localStorage.setItem('admin_user', JSON.stringify(userData));
+                
+                // Обновляем состояние
+                AppState.user = userData;
+                AppState.sessionStart = new Date();
+                AppState.isAuthenticated = true;
+                
+                // Показываем основное приложение
+                showMainApp();
+                initApp();
+                
+                // Показываем уведомление
+                showNotification('success', 'Успешный вход!', 'Добро пожаловать в панель управления');
+            } else {
+                // Показываем ошибку
+                $('#loginError').removeClass('d-none');
+                $('#password').val('');
+                $('#password').focus();
+            }
+        }
+        
+        // Выход из системы
+        function logout() {
+            Swal.fire({
+                title: 'Выйти из системы?',
+                text: 'Вы уверены, что хотите выйти?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Да, выйти',
+                cancelButtonText: 'Отмена'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Очищаем данные
+                    localStorage.removeItem('admin_token');
+                    localStorage.removeItem('admin_user');
+                    
+                    // Сбрасываем состояние
+                    AppState.isAuthenticated = false;
+                    AppState.user = null;
+                    AppState.sessionStart = null;
+                    
+                    // Показываем экран логина
+                    showLogin();
+                    
+                    // Сбрасываем форму
+                    $('#loginForm')[0].reset();
+                    $('#loginError').addClass('d-none');
+                    
+                    showNotification('info', 'Выход выполнен', 'Вы успешно вышли из системы');
+                }
+            });
+        }
+        
+        // Инициализация приложения после входа
+        function initApp() {
+            console.log('Панель управления инициализирована');
+            
+            // Загружаем первую страницу
+            loadPage('dashboard');
+            
+            // Проверяем статус бота
+            checkBotStatus();
+            
+            // Обновляем время сессии
+            setInterval(updateSessionTime, 60000);
+            
+            // Проверяем таймаут сессии
+            setInterval(checkSessionTimeout, 60000);
+        }
+        
+        // Проверка статуса бота
+        async function checkBotStatus() {
+            try {
+                $('#botStatus').html('<i class="fas fa-spinner fa-spin me-1"></i> Проверка...');
+                
+                const response = await fetch(`${APP_CONFIG.API_URL}${APP_CONFIG.BOT_TOKEN}/getMe`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    AppState.botInfo = data.result;
+                    $('#botStatus').html(`<i class="fas fa-check-circle me-1"></i> Бот: @${data.result.username}`);
+                    $('#systemStatus').html('<i class="fas fa-check-circle me-1"></i> Система активна');
+                } else {
+                    $('#botStatus').html(`<i class="fas fa-exclamation-triangle me-1"></i> Бот: Ошибка`);
+                    showNotification('error', 'Ошибка бота', data.description || 'Неизвестная ошибка');
+                }
+            } catch (error) {
+                $('#botStatus').html(`<i class="fas fa-times-circle me-1"></i> Бот: Нет связи`);
+                console.error('Ошибка проверки бота:', error);
+            }
+        }
+        
+        // Загрузка страницы
+        function loadPage(page, forceRefresh = false) {
+            if (!AppState.isAuthenticated) {
+                showLogin();
+                return;
+            }
+            
+            AppState.currentPage = page;
+            
+            // Обновляем активную ссылку
+            $('.nav-link').removeClass('active');
+            $(`.nav-link[data-page="${page}"]`).addClass('active');
+            
+            // Обновляем заголовок
+            const pageTitles = {
+                dashboard: { title: 'Дашборд', desc: 'Обзор системы и статистика' },
+                users: { title: 'Пользователи', desc: 'Управление пользователями и балансами' },
+                codes: { title: 'Промокоды', desc: 'Создание и управление промокодами' },
+                transactions: { title: 'Транзакции', desc: 'История операций и переводов' },
+                settings: { title: 'Настройки', desc: 'Настройки системы и бота' },
+                api: { title: 'API документация', desc: 'Документация по API интерфейсу' }
+            };
+            
+            const pageInfo = pageTitles[page] || { title: 'Страница', desc: '' };
+            $('#page-title').text(pageInfo.title);
+            $('#page-description').text(pageInfo.desc);
+            
+            // Показываем загрузку
+            $('#page-content').html(`
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <p class="mt-3">Загрузка ${pageInfo.title}...</p>
+                </div>
+            `);
+            
+            // Загружаем контент страницы
+            setTimeout(() => {
+                loadPageContent(page, forceRefresh);
+            }, 300);
+        }
+        
+        // Загрузка контента страницы
+        function loadPageContent(page, forceRefresh) {
+            let content = '';
+            
+            switch(page) {
+                case 'dashboard':
+                    content = getDashboardContent();
+                    break;
+                case 'users':
+                    content = getUsersContent();
+                    break;
+                case 'codes':
+                    content = getCodesContent();
+                    break;
+                case 'transactions':
+                    content = getTransactionsContent();
+                    break;
+                case 'settings':
+                    content = getSettingsContent();
+                    break;
+                case 'api':
+                    content = getApiContent();
+                    break;
+                default:
+                    content = getDashboardContent();
+            }
+            
+            $('#page-content').html(content);
+            initPageComponents(page);
+        }
+        
+        // Контент для дашборда
+        function getDashboardContent() {
+            return `
+                <div class="row g-4">
+                    <div class="col-md-6 col-xl-3">
+                        <div class="card stat-card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-title mb-1">Пользователи</h6>
+                                        <h2 id="total-users" class="mb-0">${AppState.stats.totalUsers}</h2>
+                                        <small class="opacity-75">Всего в системе</small>
+                                    </div>
+                                    <i class="fas fa-users fa-3x opacity-25"></i>
+                                </div>
+                                <div class="mt-3">
+                                    <small><i class="fas fa-user-clock me-1"></i> Активных: ${AppState.stats.activeToday}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 col-xl-3">
+                        <div class="card stat-card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-title mb-1">Балансы</h6>
+                                        <h2 id="total-balance" class="mb-0">$${AppState.stats.totalBalance.toFixed(2)}</h2>
+                                        <small class="opacity-75">Общая сумма</small>
+                                    </div>
+                                    <i class="fas fa-wallet fa-3x opacity-25"></i>
+                                </div>
+                                <div class="mt-3">
+                                    <small><i class="fas fa-hourglass-half me-1"></i> На выводе: $${AppState.stats.pendingWithdrawals.toFixed(2)}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 col-xl-3">
+                        <div class="card stat-card bg-info text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-title mb-1">Транзакции</h6>
+                                        <h2 class="mb-0">0</h2>
+                                        <small class="opacity-75">За всё время</small>
+                                    </div>
+                                    <i class="fas fa-exchange-alt fa-3x opacity-25"></i>
+                                </div>
+                                <div class="mt-3">
+                                    <small><i class="fas fa-calendar-day me-1"></i> Сегодня: 0</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 col-xl-3">
+                        <div class="card stat-card bg-warning text-dark">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-title mb-1">Промокоды</h6>
+                                        <h2 class="mb-0">0</h2>
+                                        <small class="opacity-75">Активные</small>
+                                    </div>
+                                    <i class="fas fa-gift fa-3x opacity-25"></i>
+                                </div>
+                                <div class="mt-3">
+                                    <small><i class="fas fa-check-circle me-1"></i> Использовано: 0</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Быстрые действия</h5>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="sendTestMessage()">
+                                        <i class="fas fa-paper-plane me-1"></i> Тест бота
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" onclick="showAddUserModal()">
+                                        <i class="fas fa-user-plus me-1"></i> Добавить юзера
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="d-grid">
+                                            <button class="btn btn-outline-primary" onclick="loadPage('users')">
+                                                <i class="fas fa-users me-2"></i> Управление пользователями
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-grid">
+                                            <button class="btn btn-outline-success" onclick="generatePromoCode()">
+                                                <i class="fas fa-gift me-2"></i> Создать промокод
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-grid">
+                                            <button class="btn btn-outline-info" onclick="loadPage('transactions')">
+                                                <i class="fas fa-history me-2"></i> История операций
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0"><i class="fas fa-robot me-2"></i>Информация о боте</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="bot-info-content">
+                                    ${AppState.botInfo ? `
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="bg-success rounded-circle p-2 me-3">
+                                                <i class="fas fa-check text-white"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">Бот активен</h6>
+                                                <small class="text-muted">@${AppState.botInfo.username}</small>
+                                            </div>
+                                        </div>
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <td><strong>ID:</strong></td>
+                                                <td><code>${AppState.botInfo.id}</code></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Имя:</strong></td>
+                                                <td>${AppState.botInfo.first_name}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Username:</strong></td>
+                                                <td>@${AppState.botInfo.username}</td>
+                                            </tr>
+                                        </table>
+                                        <div class="text-center">
+                                            <a href="https://t.me/${AppState.botInfo.username}" target="_blank" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-external-link-alt me-1"></i> Открыть в Telegram
+                                            </a>
+                                        </div>
+                                    ` : `
+                                        <div class="text-center py-3">
+                                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                            Загрузка информации о боте...
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0"><i class="fas fa-user-shield me-2"></i>Сессия администратора</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>Пользователь:</strong></td>
+                                        <td>${AppState.user?.name || 'Администратор'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Роль:</strong></td>
+                                        <td><span class="badge bg-primary">${AppState.user?.role || 'admin'}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Вход выполнен:</strong></td>
+                                        <td id="sessionStartTime">${AppState.sessionStart ? AppState.sessionStart.toLocaleTimeString('ru-RU') : '--:--'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Длительность сессии:</strong></td>
+                                        <td id="sessionDuration">0 минут</td>
+                                    </tr>
+                                </table>
+                                <div class="alert alert-info small">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Сессия автоматически завершится через ${APP_CONFIG.SESSION_TIMEOUT} минут неактивности
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Контент для пользователей
+        function getUsersContent() {
+            return `
+                <div class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-users me-2"></i>Управление пользователями</h5>
+                        <button class="btn btn-primary btn-sm" onclick="showAddUserModal()">
+                            <i class="fas fa-plus me-1"></i> Добавить пользователя
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" id="searchUsers" 
+                                               placeholder="Поиск по ID, имени или Telegram...">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex gap-2">
+                                        <select class="form-select" id="filterBalance">
+                                            <option value="">Все балансы</option>
+                                            <option value="0-50">$0 - $50</option>
+                                            <option value="50-200">$50 - $200</option>
+                                            <option value="200+">$200+</option>
+                                        </select>
+                                        <button class="btn btn-outline-secondary" onclick="exportUsers()">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="usersTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Telegram</th>
+                                        <th>Имя</th>
+                                        <th>Баланс</th>
+                                        <th>Рефералы</th>
+                                        <th>Последняя активность</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="7" class="text-center py-5">
+                                            <i class="fas fa-users fa-2x text-muted mb-3"></i>
+                                            <h5>Нет пользователей</h5>
+                                            <p class="text-muted">Добавьте первого пользователя</p>
+                                            <button class="btn btn-primary" onclick="showAddUserModal()">
+                                                <i class="fas fa-plus me-1"></i> Добавить пользователя
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="text-muted small">
+                                Всего пользователей: <span id="totalUsersCount">0</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="refreshUsers()">
+                                    <i class="fas fa-sync-alt me-1"></i> Обновить список
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Контент для промокодов
+        function getCodesContent() {
+            return `
+                <div class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-gift me-2"></i>Управление промокодами</h5>
+                        <button class="btn btn-primary btn-sm" onclick="showGenerateCodesModal()">
+                            <i class="fas fa-plus me-1"></i> Создать коды
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 class="text-primary">0</h3>
+                                        <p class="text-muted mb-0">Активных кодов</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 class="text-success">$0</h3>
+                                        <p class="text-muted mb-0">Общая сумма кодов</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3
