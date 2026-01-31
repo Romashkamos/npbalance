@@ -1165,3 +1165,196 @@ function deleteCode(code) {
         showNotification('success', 'Код удален', `Код ${code} был удален`);
     }
 }
+
+// Добавь эти функции в конец файла js/app.js
+
+// Отправка сообщения пользователю
+async function sendMessageToUser() {
+    const modalHtml = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-paper-plane me-2"></i>Отправить сообщение</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="sendMessageForm">
+                        <div class="mb-3">
+                            <label class="form-label">ID пользователя Telegram</label>
+                            <input type="number" class="form-control" id="messageUserId" 
+                                   placeholder="123456789" required>
+                            <small class="text-muted">ID получателя</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Текст сообщения</label>
+                            <textarea class="form-control" id="messageText" rows="4" 
+                                      placeholder="Введите текст сообщения..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Тип сообщения</label>
+                            <select class="form-select" id="messageType">
+                                <option value="text">Текст</option>
+                                <option value="html">HTML форматирование</option>
+                                <option value="notification">Уведомление</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="sendMessageNow()">Отправить</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    $('#modalContainer').html(modalHtml);
+    $('#modalContainer').modal('show');
+}
+
+// Отправка сообщения через API
+async function sendMessageNow() {
+    const userId = $('#messageUserId').val();
+    const text = $('#messageText').val();
+    const type = $('#messageType').val();
+    
+    if (!userId || !text) {
+        showNotification('error', 'Ошибка', 'Заполните все поля');
+        return;
+    }
+    
+    // Показываем загрузку
+    showNotification('info', 'Отправка', 'Отправка сообщения...');
+    
+    try {
+        // Временно используем прямое обращение к Telegram API (в будущем - через бэкенд)
+        const response = await fetch(`https://api.telegram.org/bot${APP_CONFIG.BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: userId,
+                text: text,
+                parse_mode: type === 'html' ? 'HTML' : 'Markdown'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.ok) {
+            showNotification('success', 'Успех!', 'Сообщение отправлено');
+            $('#modalContainer').modal('hide');
+            
+            // Сохраняем в историю
+            saveToMessageHistory(userId, text, 'outgoing');
+        } else {
+            showNotification('error', 'Ошибка отправки', data.description || 'Неизвестная ошибка');
+        }
+    } catch (error) {
+        showNotification('error', 'Ошибка сети', 'Не удалось отправить сообщение');
+    }
+}
+
+// Сохраняем сообщение в историю
+function saveToMessageHistory(userId, text, direction) {
+    const history = JSON.parse(localStorage.getItem('message_history') || '[]');
+    history.push({
+        id: Date.now(),
+        userId: userId,
+        text: text,
+        direction: direction,
+        timestamp: new Date().toISOString(),
+        status: 'sent'
+    });
+    
+    // Храним только последние 100 сообщений
+    if (history.length > 100) {
+        history.shift();
+    }
+    
+    localStorage.setItem('message_history', JSON.stringify(history));
+}
+
+// Показать историю сообщений
+function showMessageHistory() {
+    const modalHtml = `
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-history me-2"></i>История сообщений</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="messageHistoryList">
+                        <div class="text-center py-4">
+                            <p>Загрузка истории сообщений...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button type="button" class="btn btn-primary" onclick="sendMessageToUser()">
+                        <i class="fas fa-paper-plane me-1"></i> Новое сообщение
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    $('#modalContainer').html(modalHtml);
+    $('#modalContainer').modal('show');
+    
+    // Загружаем историю
+    setTimeout(loadMessageHistory, 100);
+}
+
+// Загрузить историю сообщений
+function loadMessageHistory() {
+    const history = JSON.parse(localStorage.getItem('message_history') || '[]');
+    let html = '';
+    
+    if (history.length === 0) {
+        html = `
+            <div class="text-center py-5">
+                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                <h5>Нет сообщений</h5>
+                <p class="text-muted">Здесь будет отображаться история переписки</p>
+                <button class="btn btn-primary" onclick="sendMessageToUser()">
+                    <i class="fas fa-paper-plane me-1"></i> Отправить первое сообщение
+                </button>
+            </div>
+        `;
+    } else {
+        history.reverse().forEach(msg => {
+            const date = new Date(msg.timestamp);
+            const timeStr = date.toLocaleTimeString('ru-RU');
+            const dateStr = date.toLocaleDateString('ru-RU');
+            
+            html += `
+                <div class="card mb-3 ${msg.direction === 'outgoing' ? 'border-primary' : 'border-secondary'}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <strong>ID ${msg.userId}</strong>
+                                <span class="badge ${msg.direction === 'outgoing' ? 'bg-primary' : 'bg-secondary'} ms-2">
+                                    ${msg.direction === 'outgoing' ? 'Исходящее' : 'Входящее'}
+                                </span>
+                            </div>
+                            <small class="text-muted">${dateStr} ${timeStr}</small>
+                        </div>
+                        <p class="mb-0">${msg.text}</p>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    $('#messageHistoryList').html(html);
+}
+
+// Добавь кнопку отправки сообщений на дашборд (в getDashboardContent функцию):
+// В раздел "Быстрые действия" добавь:
+`<button class="btn btn-outline-info" onclick="sendMessageToUser()">
+    <i class="fas fa-paper-plane me-2"></i> Отправить сообщение
+</button>`
