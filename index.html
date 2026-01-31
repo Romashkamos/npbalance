@@ -18,7 +18,6 @@
         body {
             background: #f5f7fa;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow-x: hidden;
         }
         
         .login-container {
@@ -327,148 +326,151 @@
     
     <!-- Основной JavaScript -->
     <script>
-        // Конфигурация приложения
-        const APP_CONFIG = {
-            VERSION: '2.0',
+        // ===================== КОНФИГУРАЦИЯ =====================
+        const CONFIG = {
+            BACKEND_URL: 'https://bot-backend-production-14a7.up.railway.app',
             BOT_TOKEN: '8402586959:AAGRTEGtSy7KoUlJDZvaNSxL3JKuZPWUMrY',
-            API_URL: 'https://api.telegram.org/bot',
-            SESSION_TIMEOUT: 60 // минуты
+            ADMIN_USER: 'admin',
+            ADMIN_PASS: '123'
         };
-        
-        // Состояние приложения
+
+        // ===================== СОСТОЯНИЕ ПРИЛОЖЕНИЯ =====================
         let AppState = {
-            isAuthenticated: false,
             currentPage: 'dashboard',
-            sessionStart: null,
-            botInfo: null,
-            user: null,
-            stats: {
-                totalUsers: 0,
-                activeToday: 0,
-                totalBalance: 0,
-                pendingWithdrawals: 0
-            }
+            isAuthenticated: false,
+            user: null
         };
-        
-        // Инициализация приложения
+
+        // ===================== ИНИЦИАЛИЗАЦИЯ =====================
         $(document).ready(function() {
-            // Проверяем, авторизован ли пользователь
+            console.log('Панель управления инициализирована');
             checkAuth();
-            
-            // Обновляем время
-            updateTime();
-            setInterval(updateTime, 1000);
-            
-            // Настройка обработчиков
             setupEventHandlers();
         });
-        
-        // Проверка авторизации
+
+        // ===================== АУТЕНТИФИКАЦИЯ =====================
         function checkAuth() {
             const token = localStorage.getItem('admin_token');
             const userData = localStorage.getItem('admin_user');
             
             if (token && userData) {
                 AppState.user = JSON.parse(userData);
-                AppState.sessionStart = new Date();
                 AppState.isAuthenticated = true;
-                
                 showMainApp();
-                initApp();
             } else {
                 showLogin();
             }
         }
-        
-        // Показать экран логина
+
         function showLogin() {
             $('#loginContainer').show();
             $('#mainApp').hide();
         }
-        
-        // Показать основное приложение
+
         function showMainApp() {
             $('#loginContainer').hide();
             $('#mainApp').show();
-            $('#adminName').text(AppState.user?.name || 'Администратор');
-            updateSessionTime();
+            loadPage('dashboard');
+            updateTime();
+            setInterval(updateTime, 60000);
+            checkBotStatus();
         }
-        
-        // Настройка обработчиков событий
+
+        // ===================== ОБРАБОТЧИКИ СОБЫТИЙ =====================
         function setupEventHandlers() {
             // Форма логина
             $('#loginForm').submit(function(e) {
                 e.preventDefault();
                 performLogin();
             });
-            
-            // Кнопка меню для мобильных
-            $('#menuToggle').click(function() {
-                $('#sidebar').toggleClass('active');
-                $('#content').toggleClass('active');
-            });
-            
+
             // Навигация
             $(document).on('click', '.nav-link[data-page]', function(e) {
                 e.preventDefault();
                 const page = $(this).data('page');
                 loadPage(page);
-                
-                // На мобильных закрываем меню
-                if ($(window).width() < 768) {
-                    $('#sidebar').removeClass('active');
-                    $('#content').removeClass('active');
-                }
             });
-            
+
             // Кнопка обновления
             $('#refresh-btn').click(function() {
                 loadPage(AppState.currentPage, true);
             });
+
+            // Мобильное меню
+            $('#menuToggle').click(function() {
+                $('#sidebar').toggleClass('active');
+                $('#content').toggleClass('active');
+            });
         }
-        
-        // Выполнить вход
-        function performLogin() {
+
+        // ===================== ВХОД В СИСТЕМУ =====================
+        async function performLogin() {
             const username = $('#username').val();
             const password = $('#password').val();
-            
-            // Очищаем предыдущие ошибки
+
             $('#loginError').addClass('d-none');
-            
-            // Проверяем логин и пароль
-            if (username === 'admin' && password === '123') {
-                // Сохраняем данные пользователя
+
+            // Проверяем локально (для демо)
+            if (username === CONFIG.ADMIN_USER && password === CONFIG.ADMIN_PASS) {
                 const userData = {
                     username: username,
                     name: 'Администратор',
                     role: 'admin',
                     loginTime: new Date().toISOString()
                 };
-                
-                // Сохраняем в localStorage
-                localStorage.setItem('admin_token', 'auth_' + Date.now());
+
+                localStorage.setItem('admin_token', 'auth_token_' + Date.now());
                 localStorage.setItem('admin_user', JSON.stringify(userData));
-                
-                // Обновляем состояние
+
                 AppState.user = userData;
-                AppState.sessionStart = new Date();
                 AppState.isAuthenticated = true;
-                
-                // Показываем основное приложение
+
                 showMainApp();
-                initApp();
-                
-                // Показываем уведомление
-                showNotification('success', 'Успешный вход!', 'Добро пожаловать в панель управления');
+                showNotification('success', 'Успешный вход!', 'Добро пожаловать');
             } else {
-                // Показываем ошибку
-                $('#loginError').removeClass('d-none');
-                $('#password').val('');
-                $('#password').focus();
+                // Если локальная проверка не прошла, пробуем через бэкенд
+                try {
+                    const response = await fetch(`${CONFIG.BACKEND_URL}/api/login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const userData = {
+                            username: username,
+                            name: data.user?.name || 'Администратор',
+                            role: 'admin',
+                            loginTime: new Date().toISOString()
+                        };
+
+                        localStorage.setItem('admin_token', data.token || 'auth_token');
+                        localStorage.setItem('admin_user', JSON.stringify(userData));
+
+                        AppState.user = userData;
+                        AppState.isAuthenticated = true;
+
+                        showMainApp();
+                        showNotification('success', 'Успешный вход!', 'Добро пожаловать');
+                    } else {
+                        $('#loginError').removeClass('d-none');
+                        $('#password').val('');
+                        $('#password').focus();
+                    }
+                } catch (error) {
+                    console.error('Ошибка при входе:', error);
+                    $('#loginError').removeClass('d-none');
+                    $('#password').val('');
+                    $('#password').focus();
+                }
             }
         }
-        
-        // Выход из системы
+
+        // ===================== ВЫХОД =====================
         function logout() {
             Swal.fire({
                 title: 'Выйти из системы?',
@@ -479,19 +481,13 @@
                 cancelButtonText: 'Отмена'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Очищаем данные
                     localStorage.removeItem('admin_token');
                     localStorage.removeItem('admin_user');
                     
-                    // Сбрасываем состояние
                     AppState.isAuthenticated = false;
                     AppState.user = null;
-                    AppState.sessionStart = null;
                     
-                    // Показываем экран логина
                     showLogin();
-                    
-                    // Сбрасываем форму
                     $('#loginForm')[0].reset();
                     $('#loginError').addClass('d-none');
                     
@@ -499,60 +495,19 @@
                 }
             });
         }
-        
-        // Инициализация приложения после входа
-        function initApp() {
-            console.log('Панель управления инициализирована');
-            
-            // Загружаем первую страницу
-            loadPage('dashboard');
-            
-            // Проверяем статус бота
-            checkBotStatus();
-            
-            // Обновляем время сессии
-            setInterval(updateSessionTime, 60000);
-            
-            // Проверяем таймаут сессии
-            setInterval(checkSessionTimeout, 60000);
-        }
-        
-        // Проверка статуса бота
-        async function checkBotStatus() {
-            try {
-                $('#botStatus').html('<i class="fas fa-spinner fa-spin me-1"></i> Проверка...');
-                
-                const response = await fetch(`${APP_CONFIG.API_URL}${APP_CONFIG.BOT_TOKEN}/getMe`);
-                const data = await response.json();
-                
-                if (data.ok) {
-                    AppState.botInfo = data.result;
-                    $('#botStatus').html(`<i class="fas fa-check-circle me-1"></i> Бот: @${data.result.username}`);
-                    $('#systemStatus').html('<i class="fas fa-check-circle me-1"></i> Система активна');
-                } else {
-                    $('#botStatus').html(`<i class="fas fa-exclamation-triangle me-1"></i> Бот: Ошибка`);
-                    showNotification('error', 'Ошибка бота', data.description || 'Неизвестная ошибка');
-                }
-            } catch (error) {
-                $('#botStatus').html(`<i class="fas fa-times-circle me-1"></i> Бот: Нет связи`);
-                console.error('Ошибка проверки бота:', error);
-            }
-        }
-        
-        // Загрузка страницы
+
+        // ===================== ЗАГРУЗКА СТРАНИЦ =====================
         function loadPage(page, forceRefresh = false) {
             if (!AppState.isAuthenticated) {
                 showLogin();
                 return;
             }
-            
+
             AppState.currentPage = page;
-            
-            // Обновляем активную ссылку
+
             $('.nav-link').removeClass('active');
             $(`.nav-link[data-page="${page}"]`).addClass('active');
-            
-            // Обновляем заголовок
+
             const pageTitles = {
                 dashboard: { title: 'Дашборд', desc: 'Обзор системы и статистика' },
                 users: { title: 'Пользователи', desc: 'Управление пользователями и балансами' },
@@ -561,12 +516,11 @@
                 settings: { title: 'Настройки', desc: 'Настройки системы и бота' },
                 api: { title: 'API документация', desc: 'Документация по API интерфейсу' }
             };
-            
+
             const pageInfo = pageTitles[page] || { title: 'Страница', desc: '' };
             $('#page-title').text(pageInfo.title);
             $('#page-description').text(pageInfo.desc);
-            
-            // Показываем загрузку
+
             $('#page-content').html(`
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
@@ -575,47 +529,28 @@
                     <p class="mt-3">Загрузка ${pageInfo.title}...</p>
                 </div>
             `);
-            
-            // Загружаем контент страницы
+
             setTimeout(() => {
                 loadPageContent(page, forceRefresh);
             }, 300);
         }
-        
-        // Загрузка контента страницы
-        function loadPageContent(page, forceRefresh) {
-            let content = '';
-            
+
+        // ===================== ЗАГРУЗКА КОНТЕНТА =====================
+        async function loadPageContent(page, forceRefresh) {
             switch(page) {
-                case 'dashboard':
-                    content = getDashboardContent();
-                    break;
-                case 'users':
-                    content = getUsersContent();
-                    break;
-                case 'codes':
-                    content = getCodesContent();
-                    break;
-                case 'transactions':
-                    content = getTransactionsContent();
-                    break;
-                case 'settings':
-                    content = getSettingsContent();
-                    break;
-                case 'api':
-                    content = getApiContent();
-                    break;
-                default:
-                    content = getDashboardContent();
+                case 'dashboard': await loadDashboardContent(); break;
+                case 'users': await loadUsersContent(); break;
+                case 'codes': await loadCodesContent(); break;
+                case 'transactions': await loadTransactionsContent(); break;
+                case 'settings': loadSettingsContent(); break;
+                case 'api': loadApiContent(); break;
+                default: await loadDashboardContent();
             }
-            
-            $('#page-content').html(content);
-            initPageComponents(page);
         }
-        
-        // Контент для дашборда
-        function getDashboardContent() {
-            return `
+
+        // ===================== ДАШБОРД =====================
+        async function loadDashboardContent() {
+            const content = `
                 <div class="row g-4">
                     <div class="col-md-6 col-xl-3">
                         <div class="card stat-card bg-primary text-white">
@@ -623,13 +558,10 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="card-title mb-1">Пользователи</h6>
-                                        <h2 id="total-users" class="mb-0">${AppState.stats.totalUsers}</h2>
+                                        <h2 id="total-users" class="mb-0">0</h2>
                                         <small class="opacity-75">Всего в системе</small>
                                     </div>
                                     <i class="fas fa-users fa-3x opacity-25"></i>
-                                </div>
-                                <div class="mt-3">
-                                    <small><i class="fas fa-user-clock me-1"></i> Активных: ${AppState.stats.activeToday}</small>
                                 </div>
                             </div>
                         </div>
@@ -641,13 +573,10 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="card-title mb-1">Балансы</h6>
-                                        <h2 id="total-balance" class="mb-0">$${AppState.stats.totalBalance.toFixed(2)}</h2>
+                                        <h2 id="total-balance" class="mb-0">$0</h2>
                                         <small class="opacity-75">Общая сумма</small>
                                     </div>
                                     <i class="fas fa-wallet fa-3x opacity-25"></i>
-                                </div>
-                                <div class="mt-3">
-                                    <small><i class="fas fa-hourglass-half me-1"></i> На выводе: $${AppState.stats.pendingWithdrawals.toFixed(2)}</small>
                                 </div>
                             </div>
                         </div>
@@ -658,14 +587,11 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="card-title mb-1">Транзакции</h6>
-                                        <h2 class="mb-0">0</h2>
-                                        <small class="opacity-75">За всё время</small>
+                                        <h6 class="card-title mb-1">Активность</h6>
+                                        <h2 id="active-today" class="mb-0">0</h2>
+                                        <small class="opacity-75">За сегодня</small>
                                     </div>
-                                    <i class="fas fa-exchange-alt fa-3x opacity-25"></i>
-                                </div>
-                                <div class="mt-3">
-                                    <small><i class="fas fa-calendar-day me-1"></i> Сегодня: 0</small>
+                                    <i class="fas fa-chart-line fa-3x opacity-25"></i>
                                 </div>
                             </div>
                         </div>
@@ -676,14 +602,11 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="card-title mb-1">Промокоды</h6>
-                                        <h2 class="mb-0">0</h2>
-                                        <small class="opacity-75">Активные</small>
+                                        <h6 class="card-title mb-1">Бот</h6>
+                                        <h2 class="mb-0" id="bot-username">...</h2>
+                                        <small class="opacity-75">Статус</small>
                                     </div>
-                                    <i class="fas fa-gift fa-3x opacity-25"></i>
-                                </div>
-                                <div class="mt-3">
-                                    <small><i class="fas fa-check-circle me-1"></i> Использовано: 0</small>
+                                    <i class="fas fa-robot fa-3x opacity-25"></i>
                                 </div>
                             </div>
                         </div>
@@ -693,39 +616,30 @@
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="card">
-                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <div class="card-header bg-white">
                                 <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Быстрые действия</h5>
-                                <div class="btn-group">
-                                    <button class="btn btn-sm btn-outline-primary" onclick="sendTestMessage()">
-                                        <i class="fas fa-paper-plane me-1"></i> Тест бота
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-success" onclick="showAddUserModal()">
-                                        <i class="fas fa-user-plus me-1"></i> Добавить юзера
-                                    </button>
-                                </div>
                             </div>
                             <div class="card-body">
                                 <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <div class="d-grid">
-                                            <button class="btn btn-outline-primary" onclick="loadPage('users')">
-                                                <i class="fas fa-users me-2"></i> Управление пользователями
-                                            </button>
-                                        </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-outline-primary w-100" onclick="sendTestMessage()">
+                                            <i class="fas fa-paper-plane me-2"></i>Тест бота
+                                        </button>
                                     </div>
-                                    <div class="col-md-4">
-                                        <div class="d-grid">
-                                            <button class="btn btn-outline-success" onclick="generatePromoCode()">
-                                                <i class="fas fa-gift me-2"></i> Создать промокод
-                                            </button>
-                                        </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-outline-success w-100" onclick="showAddUserModal()">
+                                            <i class="fas fa-user-plus me-2"></i>Добавить юзера
+                                        </button>
                                     </div>
-                                    <div class="col-md-4">
-                                        <div class="d-grid">
-                                            <button class="btn btn-outline-info" onclick="loadPage('transactions')">
-                                                <i class="fas fa-history me-2"></i> История операций
-                                            </button>
-                                        </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-outline-info w-100" onclick="sendMessageToUser()">
+                                            <i class="fas fa-paper-plane me-2"></i>Отправить сообщение
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-outline-warning w-100" onclick="showSettingsModal()">
+                                            <i class="fas fa-cog me-2"></i>Настройки
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -737,45 +651,12 @@
                     <div class="col-lg-6">
                         <div class="card">
                             <div class="card-header bg-white">
-                                <h5 class="mb-0"><i class="fas fa-robot me-2"></i>Информация о боте</h5>
+                                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Информация о боте</h5>
                             </div>
-                            <div class="card-body">
-                                <div id="bot-info-content">
-                                    ${AppState.botInfo ? `
-                                        <div class="d-flex align-items-center mb-3">
-                                            <div class="bg-success rounded-circle p-2 me-3">
-                                                <i class="fas fa-check text-white"></i>
-                                            </div>
-                                            <div>
-                                                <h6 class="mb-0">Бот активен</h6>
-                                                <small class="text-muted">@${AppState.botInfo.username}</small>
-                                            </div>
-                                        </div>
-                                        <table class="table table-sm">
-                                            <tr>
-                                                <td><strong>ID:</strong></td>
-                                                <td><code>${AppState.botInfo.id}</code></td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Имя:</strong></td>
-                                                <td>${AppState.botInfo.first_name}</td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Username:</strong></td>
-                                                <td>@${AppState.botInfo.username}</td>
-                                            </tr>
-                                        </table>
-                                        <div class="text-center">
-                                            <a href="https://t.me/${AppState.botInfo.username}" target="_blank" class="btn btn-sm btn-primary">
-                                                <i class="fas fa-external-link-alt me-1"></i> Открыть в Telegram
-                                            </a>
-                                        </div>
-                                    ` : `
-                                        <div class="text-center py-3">
-                                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                                            Загрузка информации о боте...
-                                        </div>
-                                    `}
+                            <div class="card-body" id="bot-info-content">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                                    Загрузка информации о боте...
                                 </div>
                             </div>
                         </div>
@@ -784,626 +665,171 @@
                     <div class="col-lg-6">
                         <div class="card">
                             <div class="card-header bg-white">
-                                <h5 class="mb-0"><i class="fas fa-user-shield me-2"></i>Сессия администратора</h5>
+                                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Последние действия</h5>
                             </div>
-                            <div class="card-body">
-                                <table class="table table-sm">
-                                    <tr>
-                                        <td><strong>Пользователь:</strong></td>
-                                        <td>${AppState.user?.name || 'Администратор'}</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Роль:</strong></td>
-                                        <td><span class="badge bg-primary">${AppState.user?.role || 'admin'}</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Вход выполнен:</strong></td>
-                                        <td id="sessionStartTime">${AppState.sessionStart ? AppState.sessionStart.toLocaleTimeString('ru-RU') : '--:--'}</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Длительность сессии:</strong></td>
-                                        <td id="sessionDuration">0 минут</td>
-                                    </tr>
-                                </table>
-                                <div class="alert alert-info small">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Сессия автоматически завершится через ${APP_CONFIG.SESSION_TIMEOUT} минут неактивности
-                                </div>
+                            <div class="card-body" id="recent-actions">
+                                Нет данных для отображения
                             </div>
                         </div>
                     </div>
                 </div>
             `;
+            
+            $('#page-content').html(content);
+            await loadDashboardStats();
+            updateBotInfo();
         }
-        
-        // Контент для пользователей
-        function getUsersContent() {
-            return `
+
+        async function loadDashboardStats() {
+            try {
+                const response = await fetch(`${CONFIG.BACKEND_URL}/api/stats`);
+                const data = await response.json();
+                
+                if (data.users !== undefined) {
+                    $('#total-users').text(data.users);
+                    $('#total-balance').text('$' + (data.balance || 0).toFixed(2));
+                    $('#active-today').text(data.activeToday || data.users || 0);
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки статистики:', error);
+            }
+        }
+
+        // ===================== ПОЛЬЗОВАТЕЛИ =====================
+        async function loadUsersContent() {
+            const content = `
                 <div class="card">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <div class="card-header bg-white">
                         <h5 class="mb-0"><i class="fas fa-users me-2"></i>Управление пользователями</h5>
-                        <button class="btn btn-primary btn-sm" onclick="showAddUserModal()">
-                            <i class="fas fa-plus me-1"></i> Добавить пользователя
-                        </button>
                     </div>
                     <div class="card-body">
                         <div class="mb-4">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                        <input type="text" class="form-control" id="searchUsers" 
-                                               placeholder="Поиск по ID, имени или Telegram...">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="d-flex gap-2">
-                                        <select class="form-select" id="filterBalance">
-                                            <option value="">Все балансы</option>
-                                            <option value="0-50">$0 - $50</option>
-                                            <option value="50-200">$50 - $200</option>
-                                            <option value="200+">$200+</option>
-                                        </select>
-                                        <button class="btn btn-outline-secondary" onclick="exportUsers()">
-                                            <i class="fas fa-download"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            <button class="btn btn-primary" onclick="showAddUserModal()">
+                                <i class="fas fa-plus me-1"></i> Добавить пользователя
+                            </button>
+                            <button class="btn btn-outline-secondary ms-2" onclick="loadUserList()">
+                                <i class="fas fa-sync-alt me-1"></i> Обновить список
+                            </button>
                         </div>
                         
+                        <div id="users-list">
+                            <div class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm text-primary"></div>
+                                <p class="mt-2">Загрузка пользователей...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            $('#page-content').html(content);
+            await loadUserList();
+        }
+
+        async function loadUserList() {
+            try {
+                const response = await fetch(`${CONFIG.BACKEND_URL}/api/users`);
+                const data = await response.json();
+                
+                let html = '';
+                
+                if (data.users && data.users.length > 0) {
+                    html = `
                         <div class="table-responsive">
-                            <table class="table table-hover" id="usersTable">
+                            <table class="table table-hover">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>Telegram</th>
+                                        <th>Telegram ID</th>
                                         <th>Имя</th>
                                         <th>Баланс</th>
-                                        <th>Рефералы</th>
-                                        <th>Последняя активность</th>
-                                        <th>Действия</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td colspan="7" class="text-center py-5">
-                                            <i class="fas fa-users fa-2x text-muted mb-3"></i>
-                                            <h5>Нет пользователей</h5>
-                                            <p class="text-muted">Добавьте первого пользователя</p>
-                                            <button class="btn btn-primary" onclick="showAddUserModal()">
-                                                <i class="fas fa-plus me-1"></i> Добавить пользователя
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="text-muted small">
-                                Всего пользователей: <span id="totalUsersCount">0</span>
-                            </div>
-                            <div>
-                                <button class="btn btn-sm btn-outline-primary" onclick="refreshUsers()">
-                                    <i class="fas fa-sync-alt me-1"></i> Обновить список
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Контент для промокодов
-        function getCodesContent() {
-            return `
-                <div class="card">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-gift me-2"></i>Управление промокодами</h5>
-                        <button class="btn btn-primary btn-sm" onclick="showGenerateCodesModal()">
-                            <i class="fas fa-plus me-1"></i> Создать коды
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4 mb-4">
-                                <div class="card bg-light">
-                                    <div class="card-body text-center">
-                                        <h3 class="text-primary">0</h3>
-                                        <p class="text-muted mb-0">Активных кодов</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 mb-4">
-                                <div class="card bg-light">
-                                    <div class="card-body text-center">
-                                        <h3 class="text-success">$0</h3>
-                                        <p class="text-muted mb-0">Общая сумма кодов</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 mb-4">
-                                <div class="card bg-light">
-                                    <div class="card-body text-center">
-                                        <h3 class="text-warning">0</h3>
-                                        <p class="text-muted mb-0">Использовано кодов</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Код</th>
-                                        <th>Сумма</th>
-                                        <th>Статус</th>
                                         <th>Создан</th>
-                                        <th>Использован</th>
                                         <th>Действия</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td colspan="6" class="text-center py-5">
-                                            <i class="fas fa-gift fa-2x text-muted mb-3"></i>
-                                            <h5>Нет промокодов</h5>
-                                            <p class="text-muted">Создайте свой первый промокод</p>
-                                            <button class="btn btn-primary" onclick="showGenerateCodesModal()">
-                                                <i class="fas fa-plus me-1"></i> Создать промокоды
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Контент для транзакций
-        function getTransactionsContent() {
-            return `
-                <div class="card">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>История транзакций</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <div class="row g-3">
-                                <div class="col-md-3">
-                                    <input type="date" class="form-control" id="dateFrom" placeholder="С даты">
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="date" class="form-control" id="dateTo" placeholder="По дату">
-                                </div>
-                                <div class="col-md-3">
-                                    <select class="form-select" id="transactionType">
-                                        <option value="">Все типы</option>
-                                        <option value="deposit">Пополнение</option>
-                                        <option value="withdrawal">Вывод</option>
-                                        <option value="bonus">Бонус</option>
-                                        <option value="referral">Реферальный</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <button class="btn btn-primary w-100" onclick="filterTransactions()">
-                                        <i class="fas fa-filter me-1"></i> Фильтровать
+                    `;
+                    
+                    data.users.forEach(user => {
+                        html += `
+                            <tr>
+                                <td>${user.id}</td>
+                                <td><code>${user.telegram_id || '-'}</code></td>
+                                <td>${user.first_name || 'Без имени'}</td>
+                                <td>
+                                    <span class="badge bg-success">$${(user.balance || 0).toFixed(2)}</span>
+                                </td>
+                                <td>${user.created_at ? new Date(user.created_at).toLocaleDateString('ru-RU') : '-'}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="editUser(${user.id})">
+                                        <i class="fas fa-edit"></i>
                                     </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Пользователь</th>
-                                        <th>Тип</th>
-                                        <th>Сумма</th>
-                                        <th>Дата</th>
-                                        <th>Описание</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td colspan="6" class="text-center py-5">
-                                            <i class="fas fa-exchange-alt fa-2x text-muted mb-3"></i>
-                                            <h5>Нет транзакций</h5>
-                                            <p class="text-muted">Здесь будет отображаться история операций</p>
-                                        </td>
-                                    </tr>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Контент для настроек
-        function getSettingsContent() {
-            return `
-                <div class="card">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Настройки системы</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Внимание!</strong> Токен бота хранится в открытом виде. Для безопасности перенесите проверку на бэкенд.
+                        <div class="text-muted small mt-2">
+                            Всего пользователей: ${data.users.length}
                         </div>
-                        
-                        <form id="settingsForm">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Токен бота Telegram</label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" value="${APP_CONFIG.BOT_TOKEN}" readonly>
-                                        <button class="btn btn-outline-secondary" type="button" onclick="copyBotToken()">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                    <small class="text-muted">Токен от @BotFather</small>
-                                </div>
-                                
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Минимальный вывод ($)</label>
-                                    <input type="number" class="form-control" value="50" min="1">
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Реферальный бонус ($)</label>
-                                    <input type="number" class="form-control" value="10" min="0">
-                                </div>
-                                
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Ежедневный бонус ($)</label>
-                                    <input type="number" class="form-control" value="5" min="0">
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Таймаут сессии (минуты)</label>
-                                    <input type="number" class="form-control" value="${APP_CONFIG.SESSION_TIMEOUT}" min="5" max="480">
-                                </div>
-                                
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Ваш Telegram ID</label>
-                                    <input type="number" class="form-control" placeholder="123456789">
-                                    <small class="text-muted">Для уведомлений (необязательно)</small>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="notificationsEnabled" checked>
-                                    <label class="form-check-label" for="notificationsEnabled">
-                                        Включить уведомления о действиях
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="d-flex justify-content-between">
-                                <button type="button" class="btn btn-secondary" onclick="testBotConnection()">
-                                    <i class="fas fa-plug me-1"></i> Проверить связь
-                                </button>
-                                <button type="button" class="btn btn-primary" onclick="saveSettings()">
-                                    <i class="fas fa-save me-1"></i> Сохранить настройки
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Контент для API
-        function getApiContent() {
-            return `
-                <div class="card">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0"><i class="fas fa-code me-2"></i>API документация</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            API для интеграции с Telegram ботом. Все запросы требуют авторизации.
+                    `;
+                } else {
+                    html = `
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5>Нет пользователей</h5>
+                            <p class="text-muted">Добавьте первого пользователя</p>
                         </div>
-                        
-                        <h5 class="mt-4">Базовый URL</h5>
-                        <div class="card bg-dark text-light mb-3">
-                            <div class="card-body">
-                                <code>https://ваш-бэкенд.домен/api/v1/</code>
-                            </div>
-                        </div>
-                        
-                        <h5 class="mt-4">Эндпоинты</h5>
-                        
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <strong>POST /user/balance</strong> - Получить баланс пользователя
-                            </div>
-                            <div class="card-body">
-                                <p><strong>Параметры:</strong></p>
-                                <pre class="bg-light p-3 rounded">{
-    "user_id": 123456789,
-    "signature": "хеш_подпись"
-}</pre>
-                                <p><strong>Ответ:</strong></p>
-                                <pre class="bg-light p-3 rounded">{
-    "success": true,
-    "balance": 150.50,
-    "currency": "USD"
-}</pre>
-                            </div>
-                        </div>
-                        
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <strong>POST /user/update</strong> - Обновить баланс
-                            </div>
-                            <div class="card-body">
-                                <p><strong>Параметры:</strong></p>
-                                <pre class="bg-light p-3 rounded">{
-    "user_id": 123456789,
-    "amount": 10.50,
-    "type": "deposit",
-    "description": "Пополнение баланса",
-    "signature": "хеш_подпись"
-}</pre>
-                            </div>
-                        </div>
-                        
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <strong>POST /promo/check</strong> - Проверить промокод
-                            </div>
-                            <div class="card-body">
-                                <p><strong>Параметры:</strong></p>
-                                <pre class="bg-light p-3 rounded">{
-    "code": "PROMO2024",
-    "user_id": 123456789
-}</pre>
-                            </div>
-                        </div>
-                        
-                        <div class="alert alert-warning mt-4">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Важно:</strong> Для работы API необходим бэкенд сервер. Сейчас используется демо-режим.
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Инициализация компонентов страницы
-        function initPageComponents(page) {
-            console.log('Инициализация компонентов для:', page);
-            
-            // Инициализация DataTables для таблиц
-            if (page === 'users' && $.fn.DataTable) {
-                setTimeout(() => {
-                    if ($('#usersTable').length) {
-                        $('#usersTable').DataTable({
-                            language: {
-                                url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ru.json'
-                            },
-                            pageLength: 25
-                        });
-                    }
-                }, 100);
-            }
-        }
-        
-        // Обновление времени
-        function updateTime() {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('ru-RU');
-            const dateStr = now.toLocaleDateString('ru-RU', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            $('#current-time').html(`
-                <i class="far fa-clock"></i> ${timeStr}<br>
-                <small class="text-muted">${dateStr}</small>
-            `);
-        }
-        
-        // Обновление времени сессии
-        function updateSessionTime() {
-            if (AppState.sessionStart) {
-                const now = new Date();
-                const diffMs = now - AppState.sessionStart;
-                const diffMins = Math.floor(diffMs / 60000);
-                
-                $('#sessionDuration').text(`${diffMins} минут`);
-                $('#sessionTime').text(`Сессия: ${diffMins} мин.`);
-                
-                // Обновляем время начала сессии
-                if ($('#sessionStartTime').length) {
-                    $('#sessionStartTime').text(AppState.sessionStart.toLocaleTimeString('ru-RU'));
+                    `;
                 }
-            }
-        }
-        
-        // Проверка таймаута сессии
-        function checkSessionTimeout() {
-            if (AppState.sessionStart) {
-                const now = new Date();
-                const diffMs = now - AppState.sessionStart;
-                const diffMins = Math.floor(diffMs / 60000);
                 
-                if (diffMins >= APP_CONFIG.SESSION_TIMEOUT) {
-                    showNotification('warning', 'Сессия истекла', 'Войдите в систему заново');
-                    logout();
-                } else if (diffMins >= APP_CONFIG.SESSION_TIMEOUT - 5) {
-                    showNotification('info', 'Скоро истекает сессия', `Осталось ${APP_CONFIG.SESSION_TIMEOUT - diffMins} минут`);
-                }
+                $('#users-list').html(html);
+            } catch (error) {
+                console.error('Ошибка загрузки пользователей:', error);
+                $('#users-list').html(`
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> Ошибка загрузки данных
+                        <p class="mb-0 small">Не удалось подключиться к серверу</p>
+                    </div>
+                `);
             }
         }
-        
-        // Показать уведомление
-        function showNotification(type, title, message) {
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
-            });
-            
-            Toast.fire({
-                icon: type,
-                title: title,
-                text: message
-            });
-        }
-        
-        // Модальное окно добавления пользователя
+
+        // ===================== ДОБАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ =====================
         function showAddUserModal() {
-            const modalHtml = `
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Добавить пользователя</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="addUserForm">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">Telegram ID *</label>
-                                        <input type="number" class="form-control" id="telegramId" required
-                                               placeholder="123456789">
-                                        <small class="text-muted">Уникальный идентификатор пользователя</small>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">Username (опционально)</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">@</span>
-                                            <input type="text" class="form-control" id="username" 
-                                                   placeholder="username">
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">Имя пользователя *</label>
-                                        <input type="text" class="form-control" id="firstName" required
-                                               placeholder="Иван">
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">Фамилия (опционально)</label>
-                                        <input type="text" class="form-control" id="lastName" 
-                                               placeholder="Иванов">
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">Начальный баланс ($)</label>
-                                        <input type="number" class="form-control" id="initialBalance" 
-                                               value="0" min="0" step="0.01">
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">Реферальный ID (опционально)</label>
-                                        <input type="number" class="form-control" id="referralId" 
-                                               placeholder="ID пользователя, который пригласил">
-                                    </div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Примечание (опционально)</label>
-                                    <textarea class="form-control" id="userNote" rows="2" 
-                                              placeholder="Дополнительная информация о пользователе"></textarea>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                            <button type="button" class="btn btn-primary" onclick="addNewUser()">Добавить пользователя</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            $('#modalContainer').html(modalHtml);
-            $('#modalContainer').modal('show');
-        }
-        
-        // Добавить нового пользователя
-        function addNewUser() {
-            const telegramId = $('#telegramId').val();
-            const firstName = $('#firstName').val();
-            
-            if (!telegramId || !firstName) {
-                showNotification('error', 'Ошибка', 'Заполните обязательные поля');
-                return;
-            }
-            
-            // Здесь будет API запрос в реальном приложении
-            showNotification('success', 'Успех!', `Пользователь ${firstName} добавлен в систему`);
-            $('#modalContainer').modal('hide');
-            
-            // Обновляем статистику
-            AppState.stats.totalUsers++;
-            if (AppState.currentPage === 'dashboard') {
-                $('#total-users').text(AppState.stats.totalUsers);
-            }
-        }
-        
-        // Модальное окно создания промокодов
-        function showGenerateCodesModal() {
             const modalHtml = `
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title"><i class="fas fa-gift me-2"></i>Создать промокоды</h5>
+                            <h5 class="modal-title">Добавить пользователя</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            <form id="generateCodesForm">
+                            <form id="addUserForm">
                                 <div class="mb-3">
-                                    <label class="form-label">Количество кодов</label>
-                                    <input type="number" class="form-control" id="codeCount" 
-                                           min="1" max="100" value="10" required>
+                                    <label class="form-label">Telegram ID *</label>
+                                    <input type="number" class="form-control" id="telegramId" 
+                                           placeholder="123456789" required>
                                 </div>
-                                
                                 <div class="mb-3">
-                                    <label class="form-label">Сумма каждого кода ($)</label>
-                                    <input type="number" class="form-control" id="codeAmount" 
-                                           min="0.01" max="1000" step="0.01" value="10.00" required>
+                                    <label class="form-label">Имя пользователя *</label>
+                                    <input type="text" class="form-control" id="userName" 
+                                           placeholder="Иван" required>
                                 </div>
-                                
                                 <div class="mb-3">
-                                    <label class="form-label">Префикс кода (опционально)</label>
-                                    <input type="text" class="form-control" id="codePrefix" 
-                                           placeholder="PROMO" maxlength="10">
-                                    <small class="text-muted">Будет добавлен в начало кода</small>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Срок действия (дней)</label>
-                                    <input type="number" class="form-control" id="codeExpiry" 
-                                           min="1" max="365" value="30">
-                                    <small class="text-muted">0 = бессрочно</small>
+                                    <label class="form-label">Начальный баланс ($)</label>
+                                    <input type="number" class="form-control" id="userBalance" 
+                                           value="0" min="0" step="0.01">
                                 </div>
                             </form>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                            <button type="button" class="btn btn-primary" onclick="generateNewCodes()">Создать коды</button>
+                            <button type="button" class="btn btn-primary" onclick="addNewUser()">Добавить</button>
                         </div>
                     </div>
                 </div>
@@ -1412,119 +838,112 @@
             $('#modalContainer').html(modalHtml);
             $('#modalContainer').modal('show');
         }
-        
-        // Создать новые промокоды
-        function generateNewCodes() {
-            const count = $('#codeCount').val();
-            const amount = $('#codeAmount').val();
+
+        async function addNewUser() {
+            const telegramId = $('#telegramId').val();
+            const userName = $('#userName').val();
+            const userBalance = $('#userBalance').val() || 0;
             
-            // Генерируем демо-коды
-            const codes = [];
-            const prefix = $('#codePrefix').val() || 'PROMO';
-            
-            for (let i = 0; i < count; i++) {
-                const random = Math.random().toString(36).substr(2, 8).toUpperCase();
-                codes.push(prefix + random);
-            }
-            
-            showNotification('success', 'Коды созданы!', `Создано ${count} промокодов по $${amount}`);
-            $('#modalContainer').modal('hide');
-            
-            // Показываем коды
-            const codesText = codes.join('\n');
-            Swal.fire({
-                title: 'Созданные промокоды',
-                html: `<div class="text-start">
-                         <p>Сумма: <strong>$${amount}</strong></p>
-                         <p>Количество: <strong>${count}</strong></p>
-                         <hr>
-                         <div style="max-height: 200px; overflow-y: auto;">
-                           <pre class="bg-light p-3 rounded">${codesText}</pre>
-                         </div>
-                         <p class="small text-muted mt-2">Скопируйте коды для использования</p>
-                       </div>`,
-                confirmButtonText: 'Закрыть',
-                width: 600
-            });
-        }
-        
-        // Отправить тестовое сообщение
-        async function sendTestMessage() {
-            if (!AppState.botInfo) {
-                showNotification('error', 'Ошибка', 'Информация о боте не загружена');
+            if (!telegramId || !userName) {
+                showNotification('error', 'Ошибка', 'Заполните обязательные поля');
                 return;
             }
             
-            showNotification('info', 'Проверка', 'Отправка тестового запроса...');
+            try {
+                const response = await fetch(`${CONFIG.BACKEND_URL}/api/user/add`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        telegram_id: telegramId,
+                        first_name: userName,
+                        balance: parseFloat(userBalance)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('success', 'Успех!', 'Пользователь добавлен');
+                    $('#modalContainer').modal('hide');
+                    await loadUserList();
+                    await loadDashboardStats();
+                } else {
+                    showNotification('error', 'Ошибка', data.error || 'Не удалось добавить пользователя');
+                }
+            } catch (error) {
+                console.error('Ошибка добавления пользователя:', error);
+                showNotification('error', 'Ошибка', 'Не удалось подключиться к серверу');
+            }
+        }
+
+        // ===================== ОТПРАВКА СООБЩЕНИЙ =====================
+        async function sendMessageToUser() {
+            const modalHtml = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="fas fa-paper-plane me-2"></i>Отправить сообщение</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="sendMessageForm">
+                                <div class="mb-3">
+                                    <label class="form-label">ID пользователя Telegram</label>
+                                    <input type="number" class="form-control" id="messageUserId" 
+                                           placeholder="123456789" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Текст сообщения</label>
+                                    <textarea class="form-control" id="messageText" rows="4" 
+                                              placeholder="Введите текст сообщения..." required></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="button" class="btn btn-primary" onclick="sendMessageNow()">Отправить</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            $('#modalContainer').html(modalHtml);
+            $('#modalContainer').modal('show');
+        }
+
+        async function sendMessageNow() {
+            const userId = $('#messageUserId').val();
+            const text = $('#messageText').val();
+            
+            if (!userId || !text) {
+                showNotification('error', 'Ошибка', 'Заполните все поля');
+                return;
+            }
+            
+            showNotification('info', 'Отправка', 'Отправка сообщения...');
             
             try {
-                const response = await fetch(`${APP_CONFIG.API_URL}${APP_CONFIG.BOT_TOKEN}/getMe`);
+                // Отправляем через бэкенд
+                const response = await fetch(`${CONFIG.BACKEND_URL}/api/message/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: userId,
+                        text: text,
+                        parse_mode: 'HTML'
+                    })
+                });
+                
                 const data = await response.json();
                 
                 if (data.ok) {
-                    showNotification('success', 'Бот активен!', `Бот @${data.result.username} работает корректно`);
+                    showNotification('success', 'Успех!', 'Сообщение отправлено');
+                    $('#modalContainer').modal('hide');
                 } else {
-                    showNotification('error', 'Ошибка бота', data.description || 'Неизвестная ошибка');
+                    showNotification('error', 'Ошибка отправки', data.description || 'Неизвестная ошибка');
                 }
-            } catch (error) {
-                showNotification('error', 'Ошибка сети', 'Не удалось подключиться к Telegram API');
-            }
-        }
-        
-        // Создать промокод (быстрая функция)
-        function generatePromoCode() {
-            const code = 'PROMO' + Math.random().toString(36).substr(2, 8).toUpperCase();
-            showNotification('success', 'Промокод создан', `Код: <strong>${code}</strong><br>Сумма: <strong>$10</strong>`);
-        }
-        
-        // Проверить соединение с ботом
-        async function testBotConnection() {
-            showNotification('info', 'Проверка', 'Тестирование соединения с ботом...');
-            
-            try {
-                const response = await fetch(`${APP_CONFIG.API_URL}${APP_CONFIG.BOT_TOKEN}/getMe`);
-                const data = await response.json();
-                
-                if (data.ok) {
-                    showNotification('success', 'Успех!', `Соединение с ботом @${data.result.username} установлено`);
-                } else {
-                    showNotification('error', 'Ошибка', data.description || 'Не удалось подключиться');
-                }
-            } catch (error) {
-                showNotification('error', 'Ошибка сети', 'Проверьте подключение к интернету');
-            }
-        }
-        
-        // Скопировать токен бота
-        function copyBotToken() {
-            navigator.clipboard.writeText(APP_CONFIG.BOT_TOKEN)
-                .then(() => showNotification('success', 'Скопировано!', 'Токен бота скопирован в буфер'))
-                .catch(() => showNotification('error', 'Ошибка', 'Не удалось скопировать токен'));
-        }
-        
-        // Сохранить настройки
-        function saveSettings() {
-            showNotification('success', 'Настройки сохранены', 'Изменения применены успешно');
-            // В реальном приложении здесь будет API запрос
-        }
-        
-        // Обновить список пользователей
-        function refreshUsers() {
-            showNotification('info', 'Обновление', 'Загрузка списка пользователей...');
-            // В реальном приложении здесь будет API запрос
-        }
-        
-        // Экспорт пользователей
-        function exportUsers() {
-            showNotification('info', 'Экспорт', 'Подготовка файла с пользователями...');
-            // В реальном приложении здесь будет генерация и скачивание CSV
-        }
-        
-        // Фильтрация транзакций
-        function filterTransactions() {
-            showNotification('info', 'Фильтрация', 'Применение фильтров к транзакциям...');
-            // В реальном приложении здесь будет API запрос с фильтрами
-        }
-    </script>
-</body>
-</html>
+            } catch (error)
