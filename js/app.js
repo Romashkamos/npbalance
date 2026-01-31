@@ -1,9 +1,15 @@
-// Конфигурация бота
-const BOT_CONFIG = {
-    TOKEN: '8402586959:AAGRTEGtSy7KoUlJDZvaNSxL3JKuZPWUMrY',
+// Конфигурация приложения
+const CONFIG = {
+    BACKEND_URL: 'https://bot-backend-production-14a7.up.railway.app/', 
+    BOT_TOKEN: '8402586959:AAGRTEGtSy7KoUlJDZvaNSxL3JKuZPWUMrY',
     API_URL: 'https://api.telegram.org/bot'
 };
 
+// Для совместимости со старым кодом
+const BOT_CONFIG = {
+    TOKEN: CONFIG.BOT_TOKEN,
+    API_URL: CONFIG.API_URL
+};
 // Состояние приложения
 let AppState = {
     currentPage: 'dashboard',
