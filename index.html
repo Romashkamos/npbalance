@@ -946,4 +946,190 @@
                 } else {
                     showNotification('error', 'Ошибка отправки', data.description || 'Неизвестная ошибка');
                 }
-            } catch (error)
+            } catch (error) {
+                showNotification('error', 'Ошибка сети', 'Не удалось отправить сообщение');
+            }
+        }
+
+        // ===================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====================
+        async function checkBotStatus() {
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${CONFIG.BOT_TOKEN}/getMe`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    $('#bot-username').text('@' + data.result.username);
+                    $('#bot-info-content').html(`
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>ID:</strong></td>
+                                <td>${data.result.id}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Имя:</strong></td>
+                                <td>${data.result.first_name}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Username:</strong></td>
+                                <td>@${data.result.username}</td>
+                            </tr>
+                        </table>
+                        <div class="text-center mt-3">
+                            <a href="https://t.me/${data.result.username}" target="_blank" class="btn btn-sm btn-primary">
+                                <i class="fas fa-external-link-alt me-1"></i> Открыть в Telegram
+                            </a>
+                        </div>
+                    `);
+                    $('#botStatus').html(`<i class="fas fa-check-circle me-1"></i> Бот: @${data.result.username}`);
+                } else {
+                    $('#botStatus').html(`<i class="fas fa-exclamation-triangle me-1"></i> Бот: Ошибка`);
+                }
+            } catch (error) {
+                $('#botStatus').html(`<i class="fas fa-times-circle me-1"></i> Бот: Нет связи`);
+            }
+        }
+
+        function updateBotInfo() {
+            // Уже обновляется в checkBotStatus
+        }
+
+        async function sendTestMessage() {
+            showNotification('info', 'Проверка', 'Тестирование работы бота...');
+            
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${CONFIG.BOT_TOKEN}/getMe`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    showNotification('success', 'Бот активен!', `Бот @${data.result.username} работает корректно`);
+                } else {
+                    showNotification('error', 'Ошибка бота', data.description);
+                }
+            } catch (error) {
+                showNotification('error', 'Ошибка сети', 'Не удалось подключиться к Telegram API');
+            }
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ru-RU');
+            const dateStr = now.toLocaleDateString('ru-RU', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            $('#current-time').html(`
+                <i class="far fa-clock"></i> ${timeStr}<br>
+                <small class="text-muted">${dateStr}</small>
+            `);
+        }
+
+        function showNotification(type, title, message) {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+            
+            Toast.fire({
+                icon: type,
+                title: title,
+                text: message
+            });
+        }
+
+        function editUser(userId) {
+            showNotification('info', 'Редактирование', 'Функция в разработке');
+        }
+
+        // ===================== ЗАГЛУШКИ ДЛЯ ОСТАЛЬНЫХ РАЗДЕЛОВ =====================
+        async function loadCodesContent() {
+            $('#page-content').html(`
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <h4>Промокоды</h4>
+                        <p class="text-muted">Раздел в разработке</p>
+                        <button class="btn btn-primary" onclick="loadPage('dashboard')">
+                            Вернуться на дашборд
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+
+        async function loadTransactionsContent() {
+            $('#page-content').html(`
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <h4>Транзакции</h4>
+                        <p class="text-muted">Раздел в разработке</p>
+                        <button class="btn btn-primary" onclick="loadPage('dashboard')">
+                            Вернуться на дашборд
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+
+        function loadSettingsContent() {
+            $('#page-content').html(`
+                <div class="card">
+                    <div class="card-body">
+                        <h4>Настройки</h4>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Внимание!</strong> Для полной безопасности перенесите проверку токенов на бэкенд.
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">URL бэкенда</label>
+                            <input type="text" class="form-control" value="${CONFIG.BACKEND_URL}" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Токен бота</label>
+                            <input type="text" class="form-control" value="${CONFIG.BOT_TOKEN}" readonly>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="testBackendConnection()">
+                            <i class="fas fa-plug me-1"></i> Проверить соединение с бэкендом
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+
+        function loadApiContent() {
+            $('#page-content').html(`
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <h4>API документация</h4>
+                        <p class="text-muted">Раздел в разработке</p>
+                        <button class="btn btn-primary" onclick="loadPage('dashboard')">
+                            Вернуться на дашборд
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+
+        async function testBackendConnection() {
+            try {
+                const response = await fetch(CONFIG.BACKEND_URL);
+                const data = await response.json();
+                showNotification('success', 'Успех!', 'Бэкенд доступен и работает');
+            } catch (error) {
+                showNotification('error', 'Ошибка', 'Бэкенд недоступен');
+            }
+        }
+
+        function showSettingsModal() {
+            showNotification('info', 'Настройки', 'Откройте раздел настроек для подробной информации');
+            loadPage('settings');
+        }
+    </script>
+</body>
+</html>
