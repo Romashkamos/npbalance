@@ -1,16 +1,39 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Админ-панель</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background: #f8f9fa; }
+        .sidebar { width: 250px; height: 100vh; position: fixed; background: #343a40; color: white; }
+        .sidebar a { color: white; text-decoration: none; display: block; padding: 10px 20px; }
+        .sidebar a:hover { background: #495057; }
+        .content { margin-left: 250px; padding: 20px; }
+        pre { font-size: 0.85rem; }
+    </style>
 </head>
 <body>
-<div class="container my-4" id="page-content"></div>
+
+<div class="sidebar d-flex flex-column">
+    <h4 class="text-center py-3 border-bottom">Админ-панель</h4>
+    <a href="#" onclick="loadDashboardContent()">Главная</a>
+    <a href="#" onclick="loadUsersContent()">Пользователи</a>
+    <a href="#" onclick="loadPromoCodesContent()">Промокоды</a>
+    <a href="#" onclick="loadTransactionsContent()">Транзакции</a>
+    <a href="#" onclick="loadSettingsContent()">Настройки</a>
+    <a href="#" onclick="loadApiContent()">API</a>
+    <a href="#" onclick="showBroadcastModal()">Массовая рассылка</a>
+</div>
+
+<div class="content" id="page-content">
+    <!-- Здесь будет контент -->
+</div>
+
+<!-- Модальные окна -->
 <div id="modalContainer"></div>
 
 <script>
@@ -19,87 +42,184 @@ const CONFIG = {
     BACKEND_URL: "https://example.com"
 };
 
-// ===================== УТИЛИТЫ =====================
+document.addEventListener("DOMContentLoaded", () => loadDashboardContent());
+
+// ===================== УВЕДОМЛЕНИЯ =====================
 function showNotification(type, title, text) {
-    Swal.fire({ icon: type, title, text, timer: 2000, showConfirmButton: false });
+    Swal.fire({ icon: type, title: title, text: text, timer: 2000, toast: true, position: 'top-end', showConfirmButton: false });
+}
+
+// ===================== ДЕЙСТВИЯ =====================
+function loadDashboardContent() {
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const codes = JSON.parse(localStorage.getItem('promo_codes') || '[]');
+    const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+
+    const totalUsers = users.length;
+    const totalCodes = codes.length;
+    const totalTransactions = transactions.length;
+
+    $('#page-content').html(`
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <h5>Пользователи</h5>
+                        <h2>${totalUsers}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h5>Промокоды</h5>
+                        <h2>${totalCodes}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <h5>Транзакции</h5>
+                        <h2>${totalTransactions}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `);
+}
+
+// ===================== ПОЛЬЗОВАТЕЛИ =====================
+function loadUsersContent() {
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    let tableHtml = '';
+    if (users.length) {
+        users.forEach(u => {
+            tableHtml += `
+                <tr>
+                    <td>${u.id}</td>
+                    <td>${u.first_name} (${u.username})</td>
+                    <td>$${u.balance}</td>
+                    <td>${u.created_at}</td>
+                </tr>
+            `;
+        });
+    } else {
+        tableHtml = `<tr><td colspan="4" class="text-center py-5">Нет пользователей</td></tr>`;
+    }
+
+    $('#page-content').html(`
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5>Пользователи</h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary mb-3" onclick="showAddUserModal()">Добавить пользователя</button>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr><th>ID</th><th>Имя (Username)</th><th>Баланс</th><th>Дата регистрации</th></tr>
+                        </thead>
+                        <tbody>${tableHtml}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `);
+}
+
+function showAddUserModal() {
+    $('#modalContainer').html(`
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5>Добавить пользователя</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <form id="addUserForm">
+                        <div class="mb-3"><label>Telegram ID</label><input type="number" id="userTelegramId" class="form-control" required></div>
+                        <div class="mb-3"><label>Имя</label><input type="text" id="userFirstName" class="form-control" required></div>
+                        <div class="mb-3"><label>Username</label><input type="text" id="userUsername" class="form-control"></div>
+                        <div class="mb-3"><label>Баланс ($)</label><input type="number" id="userBalance" class="form-control" value="0"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button class="btn btn-primary" onclick="addUser()">Добавить</button>
+                </div>
+            </div>
+        </div>
+    `).modal('show');
+}
+
+function addUser() {
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const id = users.length ? users[users.length - 1].id + 1 : 1;
+    const user = {
+        id: id,
+        telegram_id: parseInt($('#userTelegramId').val()),
+        first_name: $('#userFirstName').val(),
+        username: $('#userUsername').val(),
+        balance: parseFloat($('#userBalance').val()),
+        created_at: new Date().toLocaleDateString('ru-RU')
+    };
+    users.push(user);
+    localStorage.setItem('users', JSON.stringify(users));
+    $('#modalContainer').modal('hide');
+    showNotification('success','Успех','Пользователь добавлен');
+    loadUsersContent();
 }
 
 // ===================== ПРОМОКОДЫ =====================
-async function loadPromoCodes() {
-    try {
-        const codes = JSON.parse(localStorage.getItem('promo_codes') || '[]');
-        let activeCount = codes.filter(c => !c.is_used).length;
-        let usedCount = codes.filter(c => c.is_used).length;
-        let totalAmount = codes.reduce((sum, c) => sum + c.amount, 0);
-        
-        let tableHtml = '';
-        if(codes.length) {
-            codes.forEach(code => {
-                tableHtml += `
-                    <tr>
-                        <td>${code.code}</td>
-                        <td>$${code.amount.toFixed(2)}</td>
-                        <td>${code.is_used ? 'Да' : 'Нет'}</td>
-                        <td>${new Date(code.created_at).toLocaleDateString('ru-RU')}</td>
-                        <td>${code.expiry_days > 0 ? code.expiry_days + ' дней' : 'Бессрочно'}</td>
-                        <td>
-                            ${!code.is_used ? `<button class="btn btn-sm btn-danger" onclick="deletePromoCode('${code.code}')">
-                                <i class="fas fa-trash"></i>
-                            </button>` : ''}
-                        </td>
-                    </tr>
-                `;
-            });
-        } else {
-            tableHtml = `
+function loadPromoCodesContent() {
+    const codes = JSON.parse(localStorage.getItem('promo_codes') || '[]');
+    let tableHtml = '';
+    if (codes.length) {
+        codes.forEach(c => {
+            tableHtml += `
                 <tr>
-                    <td colspan="6" class="text-center py-5 text-muted">
-                        <i class="fas fa-gift fa-3x mb-3"></i>
-                        <h5>Нет промокодов</h5>
-                        Создайте первый промокод
-                    </td>
+                    <td>${c.code}</td>
+                    <td>$${c.amount}</td>
+                    <td>${c.is_used ? 'Да' : 'Нет'}</td>
+                    <td>${c.created_at}</td>
+                    <td><button class="btn btn-sm btn-danger" onclick="deletePromoCode('${c.code}')"><i class="fas fa-trash"></i></button></td>
                 </tr>
             `;
-        }
+        });
+    } else {
+        tableHtml = `<tr><td colspan="5" class="text-center py-5">Нет промокодов</td></tr>`;
+    }
 
-        $('#codesTableBody').html(tableHtml);
-        $('#active-codes-count').text(activeCount);
-        $('#used-codes-count').text(usedCount);
-        $('#total-codes-amount').text('$' + totalAmount.toFixed(2));
-    } catch(err) { console.error(err); }
+    $('#page-content').html(`
+        <div class="card">
+            <div class="card-header bg-white"><h5>Промокоды</h5></div>
+            <div class="card-body">
+                <button class="btn btn-primary mb-3" onclick="showGenerateCodesModal()">Создать промокоды</button>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead><tr><th>Код</th><th>Сумма</th><th>Использован</th><th>Создан</th><th>Действия</th></tr></thead>
+                        <tbody>${tableHtml}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `);
 }
 
 function showGenerateCodesModal() {
     $('#modalContainer').html(`
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-gift me-2"></i>Создать промокоды</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
+                <div class="modal-header"><h5>Создать промокоды</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
                     <form id="generateCodesForm">
-                        <div class="mb-3">
-                            <label class="form-label">Количество кодов</label>
-                            <input type="number" class="form-control" id="codeCount" min="1" max="100" value="10" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Сумма ($)</label>
-                            <input type="number" class="form-control" id="codeAmount" min="0.01" max="1000" step="0.01" value="10.00" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Префикс (опционально)</label>
-                            <input type="text" class="form-control" id="codePrefix" placeholder="PROMO" maxlength="10">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Срок действия (дней)</label>
-                            <input type="number" class="form-control" id="codeExpiry" min="0" max="365" value="30">
-                        </div>
+                        <div class="mb-3"><label>Количество кодов</label><input type="number" class="form-control" id="codeCount" min="1" max="100" value="10"></div>
+                        <div class="mb-3"><label>Сумма ($)</label><input type="number" class="form-control" id="codeAmount" min="0.01" max="1000" value="10.00" step="0.01"></div>
+                        <div class="mb-3"><label>Префикс</label><input type="text" class="form-control" id="codePrefix" placeholder="PROMO"></div>
+                        <div class="mb-3"><label>Срок действия (дней)</label><input type="number" class="form-control" id="codeExpiry" value="30" min="0" max="365"></div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-primary" onclick="generateNewCodes()">Создать</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button class="btn btn-primary" onclick="generateNewCodes()">Создать</button>
                 </div>
             </div>
         </div>
@@ -111,93 +231,87 @@ function generateNewCodes() {
     const amount = parseFloat($('#codeAmount').val());
     const prefix = $('#codePrefix').val() || 'PROMO';
     const expiry = parseInt($('#codeExpiry').val());
-    
-    const existingCodes = JSON.parse(localStorage.getItem('promo_codes') || '[]');
-    const codes = [];
+    const codes = JSON.parse(localStorage.getItem('promo_codes') || '[]');
 
-    for(let i=0;i<count;i++){
-        let code;
-        do {
-            code = prefix + Math.random().toString(36).substr(2,8).toUpperCase();
-        } while(existingCodes.some(c=>c.code===code) || codes.some(c=>c.code===code));
-
-        codes.push({
-            code,
-            amount,
-            is_used:false,
-            created_at:new Date().toISOString(),
-            expiry_days:expiry,
-            used_by:null,
-            used_at:null
-        });
+    for (let i=0;i<count;i++){
+        const codeStr = prefix + Math.random().toString(36).substr(2,8).toUpperCase();
+        codes.push({code: codeStr, amount, is_used:false, created_at:new Date().toLocaleDateString('ru-RU'), expiry_days:expiry});
     }
-
-    localStorage.setItem('promo_codes', JSON.stringify([...existingCodes, ...codes]));
-
-    Swal.fire({
-        title:'Промокоды созданы',
-        html:`<pre>${codes.map(c=>c.code).join('\n')}</pre>`,
-        width:600
-    });
-
+    localStorage.setItem('promo_codes', JSON.stringify(codes));
     $('#modalContainer').modal('hide');
-    loadPromoCodes();
+    showNotification('success','Готово','Промокоды созданы');
+    loadPromoCodesContent();
 }
 
-function deletePromoCode(code){
-    Swal.fire({
-        title:'Удалить промокод?',
-        text:`Код ${code} будет удален безвозвратно`,
-        icon:'warning',
-        showCancelButton:true,
-        confirmButtonText:'Да, удалить'
-    }).then(res=>{
+function deletePromoCode(code) {
+    Swal.fire({title:'Удалить?', text:`Код ${code} будет удален`, icon:'warning', showCancelButton:true, confirmButtonText:'Да'}).then(res=>{
         if(res.isConfirmed){
-            const codes = JSON.parse(localStorage.getItem('promo_codes')||'[]');
-            const updated = codes.filter(c=>c.code!==code);
-            localStorage.setItem('promo_codes', JSON.stringify(updated));
+            let codes = JSON.parse(localStorage.getItem('promo_codes')||'[]');
+            codes = codes.filter(c=>c.code!==code);
+            localStorage.setItem('promo_codes', JSON.stringify(codes));
             showNotification('success','Удалено',`Промокод ${code} удален`);
-            loadPromoCodes();
+            loadPromoCodesContent();
         }
     });
 }
 
-// ===================== НАСТРОЙКИ СИСТЕМЫ =====================
-function loadSettingsContent() {
-    const saved = JSON.parse(localStorage.getItem('bot_settings')||'{}');
+// ===================== ТРАНЗАКЦИИ =====================
+function loadTransactionsContent() {
+    const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+    let tableHtml = '';
+    if (transactions.length) {
+        transactions.forEach(t=>{
+            const amountClass = t.amount>0?'text-success':'text-danger';
+            tableHtml += `
+                <tr>
+                    <td>${t.id}</td>
+                    <td>${t.user_name||t.user_id}</td>
+                    <td>${t.type}</td>
+                    <td class="${amountClass}">${t.amount>0?'+':''}$${t.amount}</td>
+                    <td>${t.date}</td>
+                    <td>${t.description}</td>
+                </tr>
+            `;
+        });
+    } else { tableHtml = `<tr><td colspan="6" class="text-center py-5">Нет транзакций</td></tr>`; }
+
     $('#page-content').html(`
         <div class="card">
-            <div class="card-header bg-white">
-                <h5><i class="fas fa-cog me-2"></i>Настройки системы</h5>
-            </div>
+            <div class="card-header bg-white"><h5>Транзакции</h5></div>
             <div class="card-body">
-                <form id="settingsForm">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label>Минимальный вывод ($)</label>
-                            <input type="number" class="form-control" id="minWithdrawal" value="${saved.minWithdrawal||50}">
-                        </div>
-                        <div class="col-md-6">
-                            <label>Реферальный бонус ($)</label>
-                            <input type="number" class="form-control" id="referralBonus" value="${saved.referralBonus||10}">
-                        </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead><tr><th>ID</th><th>Пользователь</th><th>Тип</th><th>Сумма</th><th>Дата</th><th>Описание</th></tr></thead>
+                        <tbody>${tableHtml}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `);
+}
+
+// ===================== НАСТРОЙКИ =====================
+function loadSettingsContent() {
+    const settings = JSON.parse(localStorage.getItem('bot_settings') || '{}');
+    $('#page-content').html(`
+        <div class="card">
+            <div class="card-header bg-white"><h5>Настройки</h5></div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label>Мин. вывод</label>
+                        <input type="number" id="minWithdrawal" class="form-control" value="${settings.minWithdrawal||50}">
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label>Ежедневный бонус ($)</label>
-                            <input type="number" class="form-control" id="dailyBonus" value="${saved.dailyBonus||2}">
-                        </div>
-                        <div class="col-md-6">
-                            <label>Таймаут сессии (мин)</label>
-                            <input type="number" class="form-control" id="sessionTimeout" value="${saved.sessionTimeout||60}">
-                        </div>
+                    <div class="col-md-4 mb-3">
+                        <label>Реф. бонус</label>
+                        <input type="number" id="referralBonus" class="form-control" value="${settings.referralBonus||10}">
                     </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="notifyNewUsers" ${saved.notifyNewUsers?'checked':''}>
-                        <label class="form-check-label">Уведомлять о новых пользователях</label>
+                    <div class="col-md-4 mb-3">
+                        <label>Ежедневный бонус</label>
+                        <input type="number" id="dailyBonus" class="form-control" value="${settings.dailyBonus||2}">
                     </div>
-                    <button type="button" class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
-                </form>
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
             </div>
         </div>
     `);
@@ -207,31 +321,55 @@ function saveSettings() {
     const settings = {
         minWithdrawal: $('#minWithdrawal').val(),
         referralBonus: $('#referralBonus').val(),
-        dailyBonus: $('#dailyBonus').val(),
-        sessionTimeout: $('#sessionTimeout').val(),
-        notifyNewUsers: $('#notifyNewUsers').is(':checked')
+        dailyBonus: $('#dailyBonus').val()
     };
     localStorage.setItem('bot_settings', JSON.stringify(settings));
-    showNotification('success','Сохранено','Настройки сохранены');
+    showNotification('success','Сохранено','Настройки обновлены');
 }
 
-// ===================== СТАТУС СИСТЕМЫ =====================
-async function checkSystemStatus() {
-    try {
-        const [bot, backend, db] = await Promise.all([
-            fetch(`https://api.telegram.org/bot${CONFIG.BOT_TOKEN}/getMe`).then(r=>r.json()).catch(()=>({ok:false})),
-            fetch(CONFIG.BACKEND_URL).then(r=>r.json()).catch(()=>({status:'error'})),
-            fetch(`${CONFIG.BACKEND_URL}/api/stats`).then(r=>r.json()).catch(()=>({status:'error'}))
-        ]);
-        console.log('Статус:', {bot, backend, db});
-    } catch(e){ console.error(e); }
+// ===================== API =====================
+function loadApiContent() {
+    $('#page-content').html(`
+        <div class="card">
+            <div class="card-header bg-white"><h5>API документация</h5></div>
+            <div class="card-body">
+                <p>Все запросы используют X-Auth-Token</p>
+                <pre>GET /users
+GET /transactions
+POST /message/send</pre>
+            </div>
+        </div>
+    `);
 }
 
-// ===================== ИНИЦИАЛИЗАЦИЯ =====================
-$(document).ready(()=>{
-    loadPromoCodes();
-    loadSettingsContent();
-});
+// ===================== МАССОВАЯ РАССЫЛКА =====================
+function showBroadcastModal() {
+    $('#modalContainer').html(`
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5>Массовая рассылка</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="mb-3"><label>Текст</label><textarea id="broadcastText" class="form-control"></textarea></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button class="btn btn-primary" onclick="sendBroadcast()">Отправить</button>
+                </div>
+            </div>
+        </div>
+    `).modal('show');
+}
+
+function sendBroadcast() {
+    const text = $('#broadcastText').val();
+    if (!text) return showNotification('error','Ошибка','Введите текст');
+    showNotification('success','Готово','Рассылка отправлена (демо)');
+    $('#modalContainer').modal('hide');
+}
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
 </body>
 </html>
