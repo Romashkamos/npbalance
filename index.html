@@ -926,4 +926,605 @@
                             <div class="col-md-4 mb-4">
                                 <div class="card bg-light">
                                     <div class="card-body text-center">
-                                        <h3
+                                        <h3 class="text-warning">0</h3>
+                                        <p class="text-muted mb-0">Использовано кодов</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Код</th>
+                                        <th>Сумма</th>
+                                        <th>Статус</th>
+                                        <th>Создан</th>
+                                        <th>Использован</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5">
+                                            <i class="fas fa-gift fa-2x text-muted mb-3"></i>
+                                            <h5>Нет промокодов</h5>
+                                            <p class="text-muted">Создайте свой первый промокод</p>
+                                            <button class="btn btn-primary" onclick="showGenerateCodesModal()">
+                                                <i class="fas fa-plus me-1"></i> Создать промокоды
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Контент для транзакций
+        function getTransactionsContent() {
+            return `
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>История транзакций</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <input type="date" class="form-control" id="dateFrom" placeholder="С даты">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="date" class="form-control" id="dateTo" placeholder="По дату">
+                                </div>
+                                <div class="col-md-3">
+                                    <select class="form-select" id="transactionType">
+                                        <option value="">Все типы</option>
+                                        <option value="deposit">Пополнение</option>
+                                        <option value="withdrawal">Вывод</option>
+                                        <option value="bonus">Бонус</option>
+                                        <option value="referral">Реферальный</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-primary w-100" onclick="filterTransactions()">
+                                        <i class="fas fa-filter me-1"></i> Фильтровать
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Пользователь</th>
+                                        <th>Тип</th>
+                                        <th>Сумма</th>
+                                        <th>Дата</th>
+                                        <th>Описание</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5">
+                                            <i class="fas fa-exchange-alt fa-2x text-muted mb-3"></i>
+                                            <h5>Нет транзакций</h5>
+                                            <p class="text-muted">Здесь будет отображаться история операций</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Контент для настроек
+        function getSettingsContent() {
+            return `
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Настройки системы</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Внимание!</strong> Токен бота хранится в открытом виде. Для безопасности перенесите проверку на бэкенд.
+                        </div>
+                        
+                        <form id="settingsForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Токен бота Telegram</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" value="${APP_CONFIG.BOT_TOKEN}" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="copyBotToken()">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-muted">Токен от @BotFather</small>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Минимальный вывод ($)</label>
+                                    <input type="number" class="form-control" value="50" min="1">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Реферальный бонус ($)</label>
+                                    <input type="number" class="form-control" value="10" min="0">
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Ежедневный бонус ($)</label>
+                                    <input type="number" class="form-control" value="5" min="0">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Таймаут сессии (минуты)</label>
+                                    <input type="number" class="form-control" value="${APP_CONFIG.SESSION_TIMEOUT}" min="5" max="480">
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Ваш Telegram ID</label>
+                                    <input type="number" class="form-control" placeholder="123456789">
+                                    <small class="text-muted">Для уведомлений (необязательно)</small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notificationsEnabled" checked>
+                                    <label class="form-check-label" for="notificationsEnabled">
+                                        Включить уведомления о действиях
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="testBotConnection()">
+                                    <i class="fas fa-plug me-1"></i> Проверить связь
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                                    <i class="fas fa-save me-1"></i> Сохранить настройки
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Контент для API
+        function getApiContent() {
+            return `
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-code me-2"></i>API документация</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            API для интеграции с Telegram ботом. Все запросы требуют авторизации.
+                        </div>
+                        
+                        <h5 class="mt-4">Базовый URL</h5>
+                        <div class="card bg-dark text-light mb-3">
+                            <div class="card-body">
+                                <code>https://ваш-бэкенд.домен/api/v1/</code>
+                            </div>
+                        </div>
+                        
+                        <h5 class="mt-4">Эндпоинты</h5>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <strong>POST /user/balance</strong> - Получить баланс пользователя
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Параметры:</strong></p>
+                                <pre class="bg-light p-3 rounded">{
+    "user_id": 123456789,
+    "signature": "хеш_подпись"
+}</pre>
+                                <p><strong>Ответ:</strong></p>
+                                <pre class="bg-light p-3 rounded">{
+    "success": true,
+    "balance": 150.50,
+    "currency": "USD"
+}</pre>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <strong>POST /user/update</strong> - Обновить баланс
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Параметры:</strong></p>
+                                <pre class="bg-light p-3 rounded">{
+    "user_id": 123456789,
+    "amount": 10.50,
+    "type": "deposit",
+    "description": "Пополнение баланса",
+    "signature": "хеш_подпись"
+}</pre>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <strong>POST /promo/check</strong> - Проверить промокод
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Параметры:</strong></p>
+                                <pre class="bg-light p-3 rounded">{
+    "code": "PROMO2024",
+    "user_id": 123456789
+}</pre>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning mt-4">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Важно:</strong> Для работы API необходим бэкенд сервер. Сейчас используется демо-режим.
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Инициализация компонентов страницы
+        function initPageComponents(page) {
+            console.log('Инициализация компонентов для:', page);
+            
+            // Инициализация DataTables для таблиц
+            if (page === 'users' && $.fn.DataTable) {
+                setTimeout(() => {
+                    if ($('#usersTable').length) {
+                        $('#usersTable').DataTable({
+                            language: {
+                                url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ru.json'
+                            },
+                            pageLength: 25
+                        });
+                    }
+                }, 100);
+            }
+        }
+        
+        // Обновление времени
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ru-RU');
+            const dateStr = now.toLocaleDateString('ru-RU', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            $('#current-time').html(`
+                <i class="far fa-clock"></i> ${timeStr}<br>
+                <small class="text-muted">${dateStr}</small>
+            `);
+        }
+        
+        // Обновление времени сессии
+        function updateSessionTime() {
+            if (AppState.sessionStart) {
+                const now = new Date();
+                const diffMs = now - AppState.sessionStart;
+                const diffMins = Math.floor(diffMs / 60000);
+                
+                $('#sessionDuration').text(`${diffMins} минут`);
+                $('#sessionTime').text(`Сессия: ${diffMins} мин.`);
+                
+                // Обновляем время начала сессии
+                if ($('#sessionStartTime').length) {
+                    $('#sessionStartTime').text(AppState.sessionStart.toLocaleTimeString('ru-RU'));
+                }
+            }
+        }
+        
+        // Проверка таймаута сессии
+        function checkSessionTimeout() {
+            if (AppState.sessionStart) {
+                const now = new Date();
+                const diffMs = now - AppState.sessionStart;
+                const diffMins = Math.floor(diffMs / 60000);
+                
+                if (diffMins >= APP_CONFIG.SESSION_TIMEOUT) {
+                    showNotification('warning', 'Сессия истекла', 'Войдите в систему заново');
+                    logout();
+                } else if (diffMins >= APP_CONFIG.SESSION_TIMEOUT - 5) {
+                    showNotification('info', 'Скоро истекает сессия', `Осталось ${APP_CONFIG.SESSION_TIMEOUT - diffMins} минут`);
+                }
+            }
+        }
+        
+        // Показать уведомление
+        function showNotification(type, title, message) {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+            
+            Toast.fire({
+                icon: type,
+                title: title,
+                text: message
+            });
+        }
+        
+        // Модальное окно добавления пользователя
+        function showAddUserModal() {
+            const modalHtml = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Добавить пользователя</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="addUserForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Telegram ID *</label>
+                                        <input type="number" class="form-control" id="telegramId" required
+                                               placeholder="123456789">
+                                        <small class="text-muted">Уникальный идентификатор пользователя</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Username (опционально)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">@</span>
+                                            <input type="text" class="form-control" id="username" 
+                                                   placeholder="username">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Имя пользователя *</label>
+                                        <input type="text" class="form-control" id="firstName" required
+                                               placeholder="Иван">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Фамилия (опционально)</label>
+                                        <input type="text" class="form-control" id="lastName" 
+                                               placeholder="Иванов">
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Начальный баланс ($)</label>
+                                        <input type="number" class="form-control" id="initialBalance" 
+                                               value="0" min="0" step="0.01">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Реферальный ID (опционально)</label>
+                                        <input type="number" class="form-control" id="referralId" 
+                                               placeholder="ID пользователя, который пригласил">
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Примечание (опционально)</label>
+                                    <textarea class="form-control" id="userNote" rows="2" 
+                                              placeholder="Дополнительная информация о пользователе"></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="button" class="btn btn-primary" onclick="addNewUser()">Добавить пользователя</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            $('#modalContainer').html(modalHtml);
+            $('#modalContainer').modal('show');
+        }
+        
+        // Добавить нового пользователя
+        function addNewUser() {
+            const telegramId = $('#telegramId').val();
+            const firstName = $('#firstName').val();
+            
+            if (!telegramId || !firstName) {
+                showNotification('error', 'Ошибка', 'Заполните обязательные поля');
+                return;
+            }
+            
+            // Здесь будет API запрос в реальном приложении
+            showNotification('success', 'Успех!', `Пользователь ${firstName} добавлен в систему`);
+            $('#modalContainer').modal('hide');
+            
+            // Обновляем статистику
+            AppState.stats.totalUsers++;
+            if (AppState.currentPage === 'dashboard') {
+                $('#total-users').text(AppState.stats.totalUsers);
+            }
+        }
+        
+        // Модальное окно создания промокодов
+        function showGenerateCodesModal() {
+            const modalHtml = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="fas fa-gift me-2"></i>Создать промокоды</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="generateCodesForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Количество кодов</label>
+                                    <input type="number" class="form-control" id="codeCount" 
+                                           min="1" max="100" value="10" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Сумма каждого кода ($)</label>
+                                    <input type="number" class="form-control" id="codeAmount" 
+                                           min="0.01" max="1000" step="0.01" value="10.00" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Префикс кода (опционально)</label>
+                                    <input type="text" class="form-control" id="codePrefix" 
+                                           placeholder="PROMO" maxlength="10">
+                                    <small class="text-muted">Будет добавлен в начало кода</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Срок действия (дней)</label>
+                                    <input type="number" class="form-control" id="codeExpiry" 
+                                           min="1" max="365" value="30">
+                                    <small class="text-muted">0 = бессрочно</small>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="button" class="btn btn-primary" onclick="generateNewCodes()">Создать коды</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            $('#modalContainer').html(modalHtml);
+            $('#modalContainer').modal('show');
+        }
+        
+        // Создать новые промокоды
+        function generateNewCodes() {
+            const count = $('#codeCount').val();
+            const amount = $('#codeAmount').val();
+            
+            // Генерируем демо-коды
+            const codes = [];
+            const prefix = $('#codePrefix').val() || 'PROMO';
+            
+            for (let i = 0; i < count; i++) {
+                const random = Math.random().toString(36).substr(2, 8).toUpperCase();
+                codes.push(prefix + random);
+            }
+            
+            showNotification('success', 'Коды созданы!', `Создано ${count} промокодов по $${amount}`);
+            $('#modalContainer').modal('hide');
+            
+            // Показываем коды
+            const codesText = codes.join('\n');
+            Swal.fire({
+                title: 'Созданные промокоды',
+                html: `<div class="text-start">
+                         <p>Сумма: <strong>$${amount}</strong></p>
+                         <p>Количество: <strong>${count}</strong></p>
+                         <hr>
+                         <div style="max-height: 200px; overflow-y: auto;">
+                           <pre class="bg-light p-3 rounded">${codesText}</pre>
+                         </div>
+                         <p class="small text-muted mt-2">Скопируйте коды для использования</p>
+                       </div>`,
+                confirmButtonText: 'Закрыть',
+                width: 600
+            });
+        }
+        
+        // Отправить тестовое сообщение
+        async function sendTestMessage() {
+            if (!AppState.botInfo) {
+                showNotification('error', 'Ошибка', 'Информация о боте не загружена');
+                return;
+            }
+            
+            showNotification('info', 'Проверка', 'Отправка тестового запроса...');
+            
+            try {
+                const response = await fetch(`${APP_CONFIG.API_URL}${APP_CONFIG.BOT_TOKEN}/getMe`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    showNotification('success', 'Бот активен!', `Бот @${data.result.username} работает корректно`);
+                } else {
+                    showNotification('error', 'Ошибка бота', data.description || 'Неизвестная ошибка');
+                }
+            } catch (error) {
+                showNotification('error', 'Ошибка сети', 'Не удалось подключиться к Telegram API');
+            }
+        }
+        
+        // Создать промокод (быстрая функция)
+        function generatePromoCode() {
+            const code = 'PROMO' + Math.random().toString(36).substr(2, 8).toUpperCase();
+            showNotification('success', 'Промокод создан', `Код: <strong>${code}</strong><br>Сумма: <strong>$10</strong>`);
+        }
+        
+        // Проверить соединение с ботом
+        async function testBotConnection() {
+            showNotification('info', 'Проверка', 'Тестирование соединения с ботом...');
+            
+            try {
+                const response = await fetch(`${APP_CONFIG.API_URL}${APP_CONFIG.BOT_TOKEN}/getMe`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    showNotification('success', 'Успех!', `Соединение с ботом @${data.result.username} установлено`);
+                } else {
+                    showNotification('error', 'Ошибка', data.description || 'Не удалось подключиться');
+                }
+            } catch (error) {
+                showNotification('error', 'Ошибка сети', 'Проверьте подключение к интернету');
+            }
+        }
+        
+        // Скопировать токен бота
+        function copyBotToken() {
+            navigator.clipboard.writeText(APP_CONFIG.BOT_TOKEN)
+                .then(() => showNotification('success', 'Скопировано!', 'Токен бота скопирован в буфер'))
+                .catch(() => showNotification('error', 'Ошибка', 'Не удалось скопировать токен'));
+        }
+        
+        // Сохранить настройки
+        function saveSettings() {
+            showNotification('success', 'Настройки сохранены', 'Изменения применены успешно');
+            // В реальном приложении здесь будет API запрос
+        }
+        
+        // Обновить список пользователей
+        function refreshUsers() {
+            showNotification('info', 'Обновление', 'Загрузка списка пользователей...');
+            // В реальном приложении здесь будет API запрос
+        }
+        
+        // Экспорт пользователей
+        function exportUsers() {
+            showNotification('info', 'Экспорт', 'Подготовка файла с пользователями...');
+            // В реальном приложении здесь будет генерация и скачивание CSV
+        }
+        
+        // Фильтрация транзакций
+        function filterTransactions() {
+            showNotification('info', 'Фильтрация', 'Применение фильтров к транзакциям...');
+            // В реальном приложении здесь будет API запрос с фильтрами
+        }
+    </script>
+</body>
+</html>
