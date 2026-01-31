@@ -1,245 +1,192 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Админ-панель бота</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<style>
-body { background-color: #f4f6f9; }
-.nav-tabs .nav-link.active { background-color: #0d6efd; color: #fff; }
-.card-header { background-color: #fff; font-weight: bold; }
-.table th, .table td { vertical-align: middle; }
-pre { white-space: pre-wrap; word-break: break-word; }
-.badge-status { font-size: 0.85rem; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.27/dist/sweetalert2.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; }
+        .nav-link.active { font-weight: bold; }
+        .table-hover tbody tr:hover { background-color: #f1f1f1; }
+        .modal-lg { max-width: 900px; }
+        pre { white-space: pre-wrap; word-break: break-word; }
+    </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="#">Админ-панель</a>
-  </div>
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">Admin Panel</a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0" id="menuNav">
+                <li class="nav-item"><a class="nav-link active" href="#" onclick="loadUsersContent()">Пользователи</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" onclick="loadPromoCodesContent()">Промокоды</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" onclick="loadTransactionsContent()">Транзакции</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" onclick="loadSettingsContent()">Настройки</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" onclick="loadApiContent()">API</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" onclick="showBroadcastModal()">Рассылка</a></li>
+            </ul>
+        </div>
+    </div>
 </nav>
 
-<div class="container my-4">
-  <ul class="nav nav-tabs" id="adminTabs" role="tablist">
-    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#usersTab">Пользователи</a></li>
-    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#promoTab">Промокоды</a></li>
-    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#transactionsTab">Транзакции</a></li>
-    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#broadcastTab">Рассылка</a></li>
-    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#settingsTab">Настройки</a></li>
-  </ul>
+<div class="container-fluid" id="page-content"></div>
 
-  <div class="tab-content mt-3">
+<div id="modalContainer" class="modal fade" tabindex="-1"></div>
 
-    <!-- ================== ПОЛЬЗОВАТЕЛИ ================== -->
-    <div class="tab-pane fade show active" id="usersTab">
-      <div class="d-flex justify-content-between mb-3">
-        <h5>Список пользователей</h5>
-        <button class="btn btn-primary" onclick="loadUsers()"><i class="fas fa-sync"></i> Обновить</button>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-hover table-bordered align-middle">
-          <thead class="table-light">
-            <tr>
-              <th>ID</th><th>Telegram</th><th>Баланс</th><th>Дата регистрации</th><th>Действия</th>
-            </tr>
-          </thead>
-          <tbody id="usersTableBody"><tr><td colspan="5" class="text-center py-5">Загрузка...</td></tr></tbody>
-        </table>
-      </div>
-    </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.27/dist/sweetalert2.all.min.js"></script>
 
-    <!-- ================== ПРОМОКОДЫ ================== -->
-    <div class="tab-pane fade" id="promoTab">
-      <div class="d-flex justify-content-between mb-3">
-        <h5>Промокоды</h5>
-        <button class="btn btn-success" onclick="showGenerateCodesModal()"><i class="fas fa-plus"></i> Создать</button>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-hover table-bordered align-middle">
-          <thead class="table-light">
-            <tr>
-              <th>Код</th><th>Сумма</th><th>Статус</th><th>Создан</th><th>Действия</th>
-            </tr>
-          </thead>
-          <tbody id="codesTableBody"><tr><td colspan="5" class="text-center py-5">Загрузка...</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ================== ТРАНЗАКЦИИ ================== -->
-    <div class="tab-pane fade" id="transactionsTab">
-      <h5>История транзакций</h5>
-      <div class="table-responsive mt-2">
-        <table class="table table-hover table-bordered align-middle">
-          <thead class="table-light">
-            <tr><th>ID</th><th>Пользователь</th><th>Тип</th><th>Сумма</th><th>Дата</th><th>Описание</th></tr>
-          </thead>
-          <tbody id="transactionsTableBody"><tr><td colspan="6" class="text-center py-5">Загрузка...</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ================== РАССЫЛКА ================== -->
-    <div class="tab-pane fade" id="broadcastTab">
-      <h5>Массовая рассылка</h5>
-      <div class="mb-3">
-        <label>Текст сообщения</label>
-        <textarea class="form-control" id="broadcastText" rows="5" placeholder="Введите текст для рассылки..."></textarea>
-      </div>
-      <button class="btn btn-primary" onclick="sendBroadcast()"><i class="fas fa-paper-plane"></i> Отправить всем</button>
-    </div>
-
-    <!-- ================== НАСТРОЙКИ ================== -->
-    <div class="tab-pane fade" id="settingsTab">
-      <h5>Настройки системы</h5>
-      <div class="mb-3">
-        <label>Токен бота Telegram</label>
-        <input type="text" class="form-control" id="botToken" value="8402586959:AAGRTEGtSy7KoUlJDZvaNSxL3JKuZPWUMrY">
-      </div>
-      <div class="mb-3">
-        <label>URL бэкенда</label>
-        <input type="text" class="form-control" id="backendUrl" value="https://bot-backend-production-14a7.up.railway.app/">
-      </div>
-      <button class="btn btn-success" onclick="saveSettings()"><i class="fas fa-save"></i> Сохранить</button>
-    </div>
-
-  </div>
-</div>
-
-<div id="modalContainer"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// ================== НАСТРОЙКИ ==================
-let CONFIG = {
-    BOT_TOKEN: $('#botToken').val(),
-    BACKEND_URL: $('#backendUrl').val(),
-    AUTH_TOKEN: $('#botToken').val()
+const CONFIG = {
+    BACKEND_URL: 'https://bot-backend-production-14a7.up.railway.app',
+    BOT_TOKEN: '8402586959:AAGRTEGtSy7KoUlJDZvaNSxL3JKuZPWUMrY'
 };
 
+// ===================== УТИЛИТЫ =====================
 function showNotification(type, title, text) {
-    Swal.fire({icon:type,title:title,text:text,timer:2000,toast:true,position:'top-end',showConfirmButton:false});
+    Swal.fire({ icon: type, title, text, timer: 2000, toast: true, position: 'top-end', showConfirmButton: false });
 }
+function setActiveNav(elem) { $('#menuNav .nav-link').removeClass('active'); $(elem).addClass('active'); }
 
-function saveSettings(){
-    CONFIG.BOT_TOKEN = $('#botToken').val();
-    CONFIG.BACKEND_URL = $('#backendUrl').val();
-    CONFIG.AUTH_TOKEN = CONFIG.BOT_TOKEN;
-    showNotification('success','Настройки сохранены','Теперь все запросы используют новые значения');
-}
-
-// ================== ПОЛЬЗОВАТЕЛИ ==================
-async function loadUsers() {
-    const tbody = $('#usersTableBody');
-    tbody.html('<tr><td colspan="5" class="text-center py-5">Загрузка...</td></tr>');
+// ===================== ПОЛЬЗОВАТЕЛИ =====================
+async function loadUsersContent() {
+    setActiveNav($('#menuNav .nav-link:contains("Пользователи")'));
+    $('#page-content').html('<div class="text-center py-5"><div class="spinner-border"></div><p>Загрузка пользователей...</p></div>');
     try {
-        const res = await fetch(`${CONFIG.BACKEND_URL}/api/users`, { headers: { 'X-Auth-Token': CONFIG.AUTH_TOKEN }});
+        const res = await fetch(`${CONFIG.BACKEND_URL}/api/users`);
         const data = await res.json();
-        tbody.html('');
-        if(data.users && data.users.length>0){
-            data.users.forEach(u=>{
-                tbody.append(`<tr>
-                    <td>${u.id}</td>
-                    <td>${u.username || 'ID:'+u.telegram_id}</td>
-                    <td>$${u.balance}</td>
-                    <td>${u.created_at}</td>
-                    <td>
-                        <button class="btn btn-sm btn-success" onclick="adjustBalance(${u.id},true)">+</button>
-                        <button class="btn btn-sm btn-danger" onclick="adjustBalance(${u.id},false)">-</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id})"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>`);
-            });
-        } else { tbody.html('<tr><td colspan="5" class="text-center py-5">Нет пользователей</td></tr>'); }
-    } catch(e){ tbody.html('<tr><td colspan="5" class="text-center text-danger py-5">Ошибка загрузки</td></tr>'); console.error(e);}
+        let html = `<div class="card"><div class="card-header bg-white"><h5>Пользователи</h5></div><div class="card-body"><table class="table table-hover"><thead><tr><th>ID</th><th>Имя</th><th>Баланс</th><th>Действия</th></tr></thead><tbody>`;
+        data.users.forEach(u => {
+            html += `<tr>
+                <td>${u.id}</td>
+                <td>${u.first_name} (${u.username || '-'})</td>
+                <td>$${u.balance.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-success me-1" onclick="addBalance(${u.id})"><i class="fas fa-plus"></i></button>
+                    <button class="btn btn-sm btn-danger me-1" onclick="removeUser(${u.id})"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table></div></div>';
+        $('#page-content').html(html);
+    } catch(err) { showNotification('error','Ошибка','Не удалось загрузить пользователей'); }
 }
 
-async function adjustBalance(userId, add=true){
-    const { value: amount } = await Swal.fire({title:add?'Начислить':'Списать', input:'number', inputLabel:'Сумма $', inputAttributes:{min:1}, showCancelButton:true});
-    if(amount){
-        try{
-            await fetch(`${CONFIG.BACKEND_URL}/api/user/balance`,{method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':CONFIG.AUTH_TOKEN},body:JSON.stringify({user_id:userId,amount:add?amount:-amount})});
-            showNotification('success','Успех','Баланс обновлён'); loadUsers();
-        } catch(e){ showNotification('error','Ошибка','Не удалось обновить'); console.error(e);}
+async function addBalance(userId) {
+    const { value: amount } = await Swal.fire({ title: 'Начислить баланс', input: 'number', inputLabel: 'Сумма $', inputAttributes: { min: 0.01, step: 0.01 }, showCancelButton: true });
+    if(amount) {
+        try {
+            await fetch(`${CONFIG.BACKEND_URL}/api/user/balance`, { method: 'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ user_id:userId, amount:parseFloat(amount) }) });
+            showNotification('success','Успех','Баланс начислен');
+            loadUsersContent();
+        } catch { showNotification('error','Ошибка','Не удалось начислить'); }
     }
 }
 
-async function deleteUser(userId){
-    const res = await Swal.fire({title:'Удалить пользователя?', icon:'warning', showCancelButton:true});
-    if(res.isConfirmed){
-        try{
-            await fetch(`${CONFIG.BACKEND_URL}/api/user/delete`,{method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':CONFIG.AUTH_TOKEN},body:JSON.stringify({user_id:userId})});
-            showNotification('success','Успех','Пользователь удалён'); loadUsers();
-        } catch(e){ showNotification('error','Ошибка','Не удалось удалить'); console.error(e);}
+async function removeUser(userId) {
+    if(await Swal.fire({ title:'Удалить пользователя?', icon:'warning', showCancelButton:true, confirmButtonText:'Удалить'}).then(r=>r.isConfirmed)) {
+        try { await fetch(`${CONFIG.BACKEND_URL}/api/user/remove`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ user_id:userId }) });
+            showNotification('success','Удалено','Пользователь удалён'); loadUsersContent();
+        } catch { showNotification('error','Ошибка','Не удалось удалить'); }
     }
 }
 
-// ================== ПРОМОКОДЫ ==================
-async function loadPromoCodes(){
-    const tbody = $('#codesTableBody'); tbody.html('<tr><td colspan="5">Загрузка...</td></tr>');
+// ===================== ПРОМОКОДЫ =====================
+async function loadPromoCodesContent() {
+    setActiveNav($('#menuNav .nav-link:contains("Промокоды")'));
+    $('#page-content').html('<div class="text-center py-5"><div class="spinner-border"></div><p>Загрузка промокодов...</p></div>');
+    try {
+        const res = await fetch(`${CONFIG.BACKEND_URL}/api/promo`);
+        const codes = await res.json();
+        let html = `<div class="card"><div class="card-header bg-white"><h5>Промокоды</h5></div><div class="card-body"><table class="table table-hover"><thead><tr><th>Код</th><th>Сумма</th><th>Использован</th><th>Действия</th></tr></thead><tbody>`;
+        codes.forEach(c=>{
+            html+=`<tr>
+                <td>${c.code}</td>
+                <td>$${c.amount.toFixed(2)}</td>
+                <td>${c.is_used?'Да':'Нет'}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="deletePromoCode('${c.code}')"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+        html+='</tbody></table><button class="btn btn-primary mt-3" onclick="showGenerateCodesModal()">Создать промокоды</button></div></div>';
+        $('#page-content').html(html);
+    } catch { showNotification('error','Ошибка','Не удалось загрузить промокоды'); }
+}
+
+function showGenerateCodesModal() {
+    $('#modalContainer').html(`<div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>Создать промокоды</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">
+    <input type="number" id="codeCount" class="form-control mb-2" placeholder="Количество" value="10">
+    <input type="number" id="codeAmount" class="form-control mb-2" placeholder="Сумма" value="10">
+    <input type="text" id="codePrefix" class="form-control mb-2" placeholder="Префикс (опционально)">
+    <input type="number" id="codeExpiry" class="form-control mb-2" placeholder="Срок действия в днях" value="30">
+    </div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button class="btn btn-primary" onclick="generateNewCodes()">Создать</button></div></div></div>`).modal('show');
+}
+
+async function generateNewCodes() {
+    const count=parseInt($('#codeCount').val()),amount=parseFloat($('#codeAmount').val()),prefix=$('#codePrefix').val()||'PROMO',expiry=parseInt($('#codeExpiry').val());
     try{
-        const res = await fetch(`${CONFIG.BACKEND_URL}/api/promocodes`,{ headers:{'X-Auth-Token':CONFIG.AUTH_TOKEN} });
-        const data = await res.json();
-        tbody.html('');
-        if(data.codes && data.codes.length>0){
-            data.codes.forEach(c=>{
-                tbody.append(`<tr>
-                    <td>${c.code}</td>
-                    <td>$${c.amount}</td>
-                    <td>${c.is_used?'<span class="badge bg-danger">Использован</span>':'<span class="badge bg-success">Активен</span>'}</td>
-                    <td>${c.created_at}</td>
-                    <td><button class="btn btn-sm btn-outline-danger" onclick="deletePromoCode('${c.code}')"><i class="fas fa-trash"></i></button></td>
-                </tr>`);
-            });
-        }else{ tbody.html('<tr><td colspan="5" class="text-center py-5">Промокодов нет</td></tr>'); }
-    }catch(e){ tbody.html('<tr><td colspan="5" class="text-center text-danger py-5">Ошибка</td></tr>'); console.error(e);}
-}
-
-function showGenerateCodesModal(){
-    Swal.fire({title:'Создать промокоды', html:`<input type="number" id="genCount" class="swal2-input" placeholder="Количество"><input type="number" id="genAmount" class="swal2-input" placeholder="Сумма">`, showCancelButton:true, confirmButtonText:'Создать', preConfirm:()=>{return {count:parseInt($('#genCount').val()),amount:parseFloat($('#genAmount').val())}}})
-    .then(async (res)=>{ if(res.isConfirmed){ try{ await fetch(`${CONFIG.BACKEND_URL}/api/promocode/create`,{method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':CONFIG.AUTH_TOKEN},body:JSON.stringify(res.value)}); showNotification('success','Успех','Промокоды созданы'); loadPromoCodes();} catch(e){ showNotification('error','Ошибка','Не удалось создать'); console.error(e);}}});
+        await fetch(`${CONFIG.BACKEND_URL}/api/promo/create`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({count,amount,prefix,expiry}) });
+        showNotification('success','Успех','Промокоды созданы'); $('#modalContainer').modal('hide'); loadPromoCodesContent();
+    } catch { showNotification('error','Ошибка','Не удалось создать'); }
 }
 
 async function deletePromoCode(code){
-    const res = await Swal.fire({title:`Удалить промокод ${code}?`, icon:'warning', showCancelButton:true});
-    if(res.isConfirmed){ try{ await fetch(`${CONFIG.BACKEND_URL}/api/promocode/delete`,{method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':CONFIG.AUTH_TOKEN},body:JSON.stringify({code})}); showNotification('success','Успех','Промокод удалён'); loadPromoCodes();}catch(e){ showNotification('error','Ошибка','Не удалось удалить'); console.error(e);}}
+    if(await Swal.fire({title:'Удалить промокод?',text:code,icon:'warning',showCancelButton:true,confirmButtonText:'Удалить'}).then(r=>r.isConfirmed)){
+        try{await fetch(`${CONFIG.BACKEND_URL}/api/promo/remove`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});showNotification('success','Удалено','Промокод удалён');loadPromoCodesContent();}catch{showNotification('error','Ошибка','Не удалось удалить');}
+    }
 }
 
-// ================== ТРАНЗАКЦИИ ==================
-async function loadTransactions(){
-    const tbody = $('#transactionsTableBody'); tbody.html('<tr><td colspan="6">Загрузка...</td></tr>');
+// ===================== ТРАНЗАКЦИИ =====================
+async function loadTransactionsContent() {
+    setActiveNav($('#menuNav .nav-link:contains("Транзакции")'));
+    $('#page-content').html('<div class="text-center py-5"><div class="spinner-border"></div><p>Загрузка транзакций...</p></div>');
     try{
-        const res = await fetch(`${CONFIG.BACKEND_URL}/api/transactions`,{ headers:{'X-Auth-Token':CONFIG.AUTH_TOKEN} });
-        const data = await res.json(); tbody.html('');
-        if(data.transactions && data.transactions.length>0){
-            data.transactions.forEach(t=>{
-                tbody.append(`<tr>
-                    <td>${t.id}</td>
-                    <td>${t.user_name||t.user_id}</td>
-                    <td>${t.type}</td>
-                    <td>${t.amount>0?'+':'-'}$${t.amount}</td>
-                    <td>${t.date}</td>
-                    <td>${t.description}</td>
-                </tr>`);
-            });
-        }else{ tbody.html('<tr><td colspan="6" class="text-center py-5">Нет транзакций</td></tr>');}
-    }catch(e){ tbody.html('<tr><td colspan="6" class="text-center text-danger py-5">Ошибка</td></tr>'); console.error(e);}
+        const res=await fetch(`${CONFIG.BACKEND_URL}/api/transactions`);
+        const data=await res.json();
+        let html=`<div class="card"><div class="card-header bg-white"><h5>Транзакции</h5></div><div class="card-body"><table class="table table-hover"><thead><tr><th>ID</th><th>Пользователь</th><th>Тип</th><th>Сумма</th><th>Дата</th><th>Описание</th></tr></thead><tbody>`;
+        data.forEach(t=>{html+=`<tr><td>${t.id}</td><td>${t.user_name || t.user_id}</td><td>${t.type}</td><td>$${t.amount.toFixed(2)}</td><td>${t.date}</td><td>${t.description}</td></tr>`;});
+        html+='</tbody></table></div></div>';
+        $('#page-content').html(html);
+    } catch{showNotification('error','Ошибка','Не удалось загрузить транзакции');}
 }
 
-// ================== РАССЫЛКА ==================
+// ===================== НАСТРОЙКИ =====================
+function loadSettingsContent(){
+    setActiveNav($('#menuNav .nav-link:contains("Настройки")'));
+    $('#page-content').html(`<div class="card"><div class="card-header bg-white"><h5>Настройки</h5></div><div class="card-body">
+    <div class="mb-3"><label>Токен бота</label><input class="form-control" value="${CONFIG.BOT_TOKEN}" readonly></div>
+    <div class="mb-3"><label>URL бэкенда</label><input class="form-control" value="${CONFIG.BACKEND_URL}" readonly></div></div></div>`);
+}
+
+// ===================== API =====================
+function loadApiContent(){
+    setActiveNav($('#menuNav .nav-link:contains("API")'));
+    $('#page-content').html(`<div class="card"><div class="card-header bg-white"><h5>API</h5></div><div class="card-body"><pre>${CONFIG.BACKEND_URL}/api/</pre></div></div>`);
+}
+
+// ===================== РАССЫЛКА =====================
+function showBroadcastModal(){
+    $('#modalContainer').html(`<div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5>Массовая рассылка</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><textarea class="form-control" id="broadcastText" rows="6" placeholder="Сообщение"></textarea></div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button class="btn btn-primary" onclick="sendBroadcast()">Отправить</button></div></div></div>`).modal('show');
+}
+
 async function sendBroadcast(){
-    const text = $('#broadcastText').val(); if(!text){ showNotification('error','Ошибка','Введите текст'); return; }
-    const res = await Swal.fire({title:'Отправить всем?', text:text, icon:'question', showCancelButton:true});
-    if(res.isConfirmed){ try{ await fetch(`${CONFIG.BACKEND_URL}/api/message/send`,{method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':CONFIG.AUTH_TOKEN},body:JSON.stringify({text, chat_id:'all'})}); showNotification('success','Успех','Сообщение отправлено'); $('#broadcastText').val('');}catch(e){ showNotification('error','Ошибка','Не удалось отправить'); console.error(e);}}
+    const text=$('#broadcastText').val();
+    if(!text){showNotification('error','Ошибка','Введите текст');return;}
+    try{
+        await fetch(`${CONFIG.BACKEND_URL}/api/broadcast`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+        showNotification('success','Успех','Рассылка отправлена');$('#modalContainer').modal('hide');
+    } catch{showNotification('error','Ошибка','Не удалось отправить');}
 }
 
-// ================== ИНИЦИАЛИЗАЦИЯ ==================
-$(document).ready(function(){ loadUsers(); loadPromoCodes(); loadTransactions(); });
+// ===================== ИНИЦИАЛИЗАЦИЯ =====================
+loadUsersContent();
 </script>
 </body>
 </html>
